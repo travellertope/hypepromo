@@ -9,8 +9,8 @@ campaigns that pay **per verified click (CPC)** or **per conversion (CPA)**.
 assets on the platforms they choose (WhatsApp Status, X, Facebook, Instagram
 Stories, Instagram bio link, Telegram) with a unique tracking link per
 platform, and earn **75% of every billed click or conversion**. The
-platform keeps 25% of the advertiser's budget (VAT is paid out of this
-share). Game mechanics (XP, levels, energy, leaderboards, guilds) drive engagement **and** double as the trust system.
+platform keeps 25% of the advertiser's budget as its service fee (VAT, once
+it applies, is paid out of this share). Game mechanics (XP, levels, energy, leaderboards, guilds) drive engagement **and** double as the trust system.
 
 ---
 
@@ -452,7 +452,7 @@ free-floating `balance` column that code can change directly.
 |---|---|---|
 | Advertiser funds ₦1,000,000 net (pays ₦1,002,000 incl. Paystack fee; `charge.success`) | `psp_clearing` ₦1,000,000 | `advertiser_wallet` ₦1,000,000 |
 | Campaign launched with ₦500,000 budget | `advertiser_wallet` | `campaign_escrow` |
-| Valid click, CPC ₦500 (or approved conversion at ₦500) | `campaign_escrow` 50,000k | `creator_pending` 37,500k · `platform_revenue` + `vat_payable` 12,500k (VAT split per §7.1) |
+| Valid click, CPC ₦500 (or approved conversion at ₦500) | `campaign_escrow` 50,000k | `creator_pending` 37,500k · `platform_revenue` 12,500k (split with `vat_payable` when VAT is on, §7.1) |
 | Hold released | `creator_pending` | `creator_available` |
 | Click reversed (fraud) | `creator_pending` · `platform_revenue` | `campaign_escrow` |
 | Creator withdraws ₦20,000 (₦25 fee → ₦19,975 arrives) | `creator_available` ₦20,000 | `payouts_in_transit` ₦20,000 |
@@ -484,26 +484,44 @@ receive ₦75,000 and Promoet keeps ₦25,000. Nothing is added on top.
 These fee figures come from current published pricing and should be checked
 against the Paystack dashboard before launch.
 
-**VAT (decided: VAT-inclusive):** nothing is added on top, so VAT on Promoet's service is paid out of
-the **25% commission**. The commission was raised from 15% to 25% so that it
-still leaves a healthy margin in either tax treatment:
+**Tax setup (decided):**
 
-| VAT treatment (confirm with an accountant) | VAT on a ₦100,000 budget | Promoet keeps | Creators get |
-|---|---|---|---|
-| VAT on the platform fee only (Promoet acts as an **agent**) | ₦25,000 × 7.5/107.5 ≈ **₦1,744** | ≈ ₦23,256 (**~23.3%**) | ₦75,000 |
-| VAT on the whole advertising service (Promoet acts as **principal**) | ₦100,000 × 7.5/107.5 ≈ **₦6,977** | ≈ ₦18,023 (**~18.0%**) | ₦75,000 |
+| Topic | Decision |
+|---|---|
+| Promoet's role | **Agent.** Creators provide the promotion to the advertiser; Promoet runs the marketplace and charges a 25% service fee. VAT applies to the **25% fee only**, never to the creators' 75% |
+| Pricing | **VAT-inclusive.** Nothing is added to the advertiser's budget |
+| VAT at launch | **Off.** Promoet has no turnover yet, so it starts without charging VAT |
+| Creator payouts | **No tax deducted.** Creators only pay the gateway's transfer fee |
+| Gateway fees | No VAT effect for Promoet |
 
-Creators always receive exactly 75%. The ledger books the VAT portion of each
-billed click into `vat_payable` at billing time, using the rate and treatment
-stored in config, so the remittance is always ready.
+**VAT switch.** VAT is a single setting (`vat_enabled`, `vat_rate_bps = 750`)
+so it can be turned on the day Promoet registers for VAT or crosses the
+threshold the accountant gives. The admin console shows Promoet's running
+total of fee income (in the agent model, turnover is the 25% fees, not the
+full ad spend) and alerts when it nears that threshold.
 
-**Advertiser invoices** (generated for every funding payment and as a
-monthly statement of spend) show the VAT included in the price, so
-VAT-registered advertisers can claim it back. For example: *"Campaign spend
-₦100,000 (includes VAT of ₦1,744)"*. The invoice wording must match the
-agent/principal treatment the accountant confirms. Invoices carry Promoet's
-TIN and a sequential invoice number, and are stored as PDFs in the advertiser
-portal.
+| Example: ₦100,000 budget | VAT off (launch) | VAT on |
+|---|---|---|
+| Creators get | ₦75,000 | ₦75,000 |
+| VAT (inside the 25% fee: ₦25,000 × 7.5/107.5) | — | ≈ ₦1,744 |
+| Promoet keeps | ₦25,000 (25%) | ≈ ₦23,256 (~23.3%) |
+
+When VAT is on, the ledger books the VAT portion of each billed click into
+`vat_payable` at billing time, so the remittance is always ready. Changing the
+setting applies to new billing only and never rewrites history.
+
+**Advertiser invoices** (for every funding payment, plus a monthly statement
+of spend) follow the agent model. They separate the two parts of the spend:
+
+- *Creator promotion payouts, paid on the advertiser's behalf:* ₦75,000
+- *Promoet service fee:* ₦25,000 (when VAT is on: *"includes VAT of ₦1,744"*)
+- *Total:* ₦100,000
+
+When VAT is off, invoices show **no VAT line**: a business not registered for
+VAT must not show VAT. Invoices carry a sequential number (and Promoet's TIN
+once issued) and are downloadable as PDFs in the advertiser portal. The
+advertiser terms of service state that Promoet acts as an agent and that
+creators are independent, which supports the invoice wording.
 
 **Recommended minimums** (all configurable in admin):
 
@@ -655,7 +673,7 @@ user, per IP, plus stricter limits on OTP and payout endpoints).
 | **Influencer disclosure** | Make creators include `#ad`/`#sponsored` (show it in caption templates, check it in post-proof review) |
 | **Holding funds** | Don't operate as an unlicensed wallet or e-money issuer. Keep funds with the licensed PSP (Paystack/Flutterwave) and present balances as earned receivables. Confirm the structure with counsel and the PSP |
 | **KYC / AML** | BVN or NIN check before the first withdrawal. Tiered limits. Sanctions/PEP screening through the KYC provider for advertisers |
-| **Tax** | VAT on the platform fee, possible withholding tax, and creators' own income reporting. Itemised invoices |
+| **Tax** | Agent model: VAT only on the 25% fee, switched on once Promoet registers or crosses the threshold. No tax deducted from creator payouts (owner decision). Agent-style itemised invoices |
 | **Promotions** | Keep the seasonal prize **skill/performance-based**. Prizes decided by chance can fall under lottery or sales-promotion rules |
 | **Prohibited categories** | No gambling, unlicensed loan apps, crypto schemes or adult content without approval (loan apps and Ponzi-style "investment" ads are a known local abuse vector) |
 
@@ -780,7 +798,7 @@ person.
 | # | Topic | Decision | Where |
 |---|---|---|---|
 | 1 | Pricing models | **Clicks (CPC) and conversions (CPA) only.** Impressions/CPM dropped. No promo codes: conversions are tracked through the link | §5.7, §5.8 |
-| 2 | Fee & charges | **25%** taken **from** the advertiser's budget (raised from 15% so VAT can be paid out of it), 75% to creators. **VAT-inclusive:** nothing added on top; invoices show "includes VAT of ₦X". Advertiser pays Paystack fees when funding. Creator pays transfer fees when withdrawing | §7.1 |
+| 2 | Fee & charges | **25%** taken **from** the advertiser's budget (raised from 15% so VAT can be paid out of it), 75% to creators. **VAT-inclusive:** nothing added on top. Advertiser pays Paystack fees when funding. Creator pays transfer fees when withdrawing | §7.1 |
 | 3 | Minimums | CPC ₦50, CPA ₦300/₦500, budget ₦25k (CPC) / ₦50k (CPA), top-up ₦10k, withdrawal ₦1k, 10% max share per creator | §7.1 |
 | 4 | Hold period | **Flat 7 days for everyone**, regardless of level or account age. CPA: available once approved and at least 7 days old | §5.5 |
 | 5 | WhatsApp Status | Supported, with its own link per creator, engaged-click rule, stricter caps and quality scores | §5.9 |
@@ -788,10 +806,11 @@ person.
 | 7 | Hosting | **Supabase**: new project `promoet`, London (eu-west-2) | §3 |
 | 8 | Claim flow | **Platform first:** creators choose where they'll post, then get creatives, caption and link instructions made for that platform | §5.1 |
 | 9 | Launch platforms | **WhatsApp Status, X, Facebook, Instagram Stories, Instagram bio link, Telegram.** TikTok and Instagram feed/Reel links (other than through the bio page) are not supported at launch | §5.1 |
+| 10 | Tax | **Agent model** (VAT on the 25% fee only). VAT **off at launch**, switched on later. Invoices itemise creator payouts and the service fee. No tax deducted from creator payouts. Gateway fees have no VAT effect | §7.1 |
 
 ### Still open
 
-1. **VAT treatment** (agent vs principal) and invoice wording. Pricing is VAT-inclusive either way; only the margin (~23% or ~18%) and the invoice wording depend on the answer. Ask an accountant (§7.1).
-2. **Seasonal prize pool:** size and funding source.
-3. **Domains:** the name is **Promoet**. Secure `promoet.ng` / `promoet.com` plus a short redirect domain for tracking links (the doc uses `pmt.ng` as a placeholder; check availability).
+1. **Seasonal prize pool:** size and funding source.
+2. **Domains:** the name is **Promoet**. Secure `promoet.ng` / `promoet.com` plus a short redirect domain for tracking links (the doc uses `pmt.ng` as a placeholder; check availability).
+3. **Supabase project:** the Bluu organisation is at the free plan's 2-project limit. Pause a project or upgrade before Phase 0 starts.
 4. **Legal review** of the funds-holding structure, ARCON obligations and terms of service (§11).
