@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { pgTable, uuid, text, bigint, timestamp, pgEnum } from 'drizzle-orm/pg-core'
 import { creators } from './creators.ts'
 
@@ -14,7 +15,7 @@ export const withdrawals = pgTable('withdrawals', {
   creatorId: uuid('creator_id').notNull().references(() => creators.id),
   amountKobo: bigint('amount_kobo', { mode: 'bigint' }).notNull(),
   // transfer fee deducted from creator (Paystack charge)
-  feeKobo: bigint('fee_kobo', { mode: 'bigint' }).notNull().default(0),
+  feeKobo: bigint('fee_kobo', { mode: 'bigint' }).notNull().default(sql`0`),
   netKobo: bigint('net_kobo', { mode: 'bigint' }).notNull(), // amountKobo - feeKobo
   status: withdrawalStatusEnum('status').notNull().default('pending'),
   paystackTransferCode: text('paystack_transfer_code'),

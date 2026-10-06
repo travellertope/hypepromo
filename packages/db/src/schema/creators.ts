@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { pgTable, uuid, text, integer, bigint, timestamp, pgEnum } from 'drizzle-orm/pg-core'
 import { users } from './users.ts'
 
@@ -26,7 +27,7 @@ export const creators = pgTable('creators', {
 // available_kobo and pending_kobo live in the ledger; these are cached for display
 export const creatorBalanceCache = pgTable('creator_balance_cache', {
   creatorId: uuid('creator_id').primaryKey().references(() => creators.id, { onDelete: 'cascade' }),
-  pendingKobo: bigint('pending_kobo', { mode: 'bigint' }).notNull().default(0),
-  availableKobo: bigint('available_kobo', { mode: 'bigint' }).notNull().default(0),
+  pendingKobo: bigint('pending_kobo', { mode: 'bigint' }).notNull().default(sql`0`),
+  availableKobo: bigint('available_kobo', { mode: 'bigint' }).notNull().default(sql`0`),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

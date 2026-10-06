@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   pgTable, uuid, text, bigint, integer, boolean,
   timestamp, pgEnum, jsonb,
@@ -22,8 +23,8 @@ export const campaigns = pgTable('campaigns', {
   unitPriceKobo: bigint('unit_price_kobo', { mode: 'bigint' }).notNull(),   // advertiser pays per click/conversion
   creatorUnitKobo: bigint('creator_unit_kobo', { mode: 'bigint' }).notNull(), // floor(unit * 7500/10000)
   budgetKobo: bigint('budget_kobo', { mode: 'bigint' }).notNull(),
-  reservedKobo: bigint('reserved_kobo', { mode: 'bigint' }).notNull().default(0),
-  spentKobo: bigint('spent_kobo', { mode: 'bigint' }).notNull().default(0),
+  reservedKobo: bigint('reserved_kobo', { mode: 'bigint' }).notNull().default(sql`0`),
+  spentKobo: bigint('spent_kobo', { mode: 'bigint' }).notNull().default(sql`0`),
 
   // caps
   maxPerCreatorPct: integer('max_per_creator_pct').notNull().default(10), // 10% of budget
@@ -44,7 +45,7 @@ export const campaigns = pgTable('campaigns', {
   reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
 
   // VAT snapshot
-  vatIncludedKobo: bigint('vat_included_kobo', { mode: 'bigint' }).notNull().default(0),
+  vatIncludedKobo: bigint('vat_included_kobo', { mode: 'bigint' }).notNull().default(sql`0`),
 
   startsAt: timestamp('starts_at', { withTimezone: true }),
   endsAt: timestamp('ends_at', { withTimezone: true }),
