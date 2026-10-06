@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10'
+  # Dummy DATABASE_URL so packages that import @promoet/db don't throw at
+  # module-load time during typecheck / test (no actual DB connection made)
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # 1. Typecheck — all packages in one Turborepo pass
+  # ─────────────────────────────────────────────────────────────────────────
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm turbo typecheck
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 2. Tests — unit + property-based
+  # ─────────────────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm turbo test
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 3. Build — verify every app/package compiles
+  # ─────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      # Next.js build needs these as placeholder values
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm turbo build
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 4. Migration check — drizzle-kit generate must produce no new files
+  #    (schema and migrations must stay in sync; uncommitted drift is a bug)
+  # ─────────────────────────────────────────────────────────────────────────
+  migration-check:
+    name: Migration drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check for uncommitted migration drift
+        working-directory: packages/db
+        run: |
+          pnpm db:generate
+          if [ -n "$(git status --porcelain migrations/)" ]; then
+            echo "::error::Schema changes detected that have no migration file."
+            echo "Run 'pnpm --filter @promoet/db db:generate' locally and commit the result."
+            git diff migrations/
+            exit 1
+          fi
