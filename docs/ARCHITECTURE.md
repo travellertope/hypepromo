@@ -484,7 +484,7 @@ receive ₦75,000 and Promoet keeps ₦25,000. Nothing is added on top.
 These fee figures come from current published pricing and should be checked
 against the Paystack dashboard before launch.
 
-**VAT:** nothing is added on top, so VAT on Promoet's service is paid out of
+**VAT (decided: VAT-inclusive):** nothing is added on top, so VAT on Promoet's service is paid out of
 the **25% commission**. The commission was raised from 15% to 25% so that it
 still leaves a healthy margin in either tax treatment:
 
@@ -496,6 +496,14 @@ still leaves a healthy margin in either tax treatment:
 Creators always receive exactly 75%. The ledger books the VAT portion of each
 billed click into `vat_payable` at billing time, using the rate and treatment
 stored in config, so the remittance is always ready.
+
+**Advertiser invoices** (generated for every funding payment and as a
+monthly statement of spend) show the VAT included in the price, so
+VAT-registered advertisers can claim it back. For example: *"Campaign spend
+₦100,000 (includes VAT of ₦1,744)"*. The invoice wording must match the
+agent/principal treatment the accountant confirms. Invoices carry Promoet's
+TIN and a sequential invoice number, and are stored as PDFs in the advertiser
+portal.
 
 **Recommended minimums** (all configurable in admin):
 
@@ -772,7 +780,7 @@ person.
 | # | Topic | Decision | Where |
 |---|---|---|---|
 | 1 | Pricing models | **Clicks (CPC) and conversions (CPA) only.** Impressions/CPM dropped. No promo codes: conversions are tracked through the link | §5.7, §5.8 |
-| 2 | Fee & charges | **25%** taken **from** the advertiser's budget (raised from 15% so VAT can be paid out of it), 75% to creators. Advertiser pays Paystack fees when funding. Creator pays transfer fees when withdrawing | §7.1 |
+| 2 | Fee & charges | **25%** taken **from** the advertiser's budget (raised from 15% so VAT can be paid out of it), 75% to creators. **VAT-inclusive:** nothing added on top; invoices show "includes VAT of ₦X". Advertiser pays Paystack fees when funding. Creator pays transfer fees when withdrawing | §7.1 |
 | 3 | Minimums | CPC ₦50, CPA ₦300/₦500, budget ₦25k (CPC) / ₦50k (CPA), top-up ₦10k, withdrawal ₦1k, 10% max share per creator | §7.1 |
 | 4 | Hold period | **Flat 7 days for everyone**, regardless of level or account age. CPA: available once approved and at least 7 days old | §5.5 |
 | 5 | WhatsApp Status | Supported, with its own link per creator, engaged-click rule, stricter caps and quality scores | §5.9 |
@@ -783,7 +791,7 @@ person.
 
 ### Still open
 
-1. **VAT treatment** (agent vs principal). The 25% covers either case, but net revenue is ~23% or ~18% depending on the answer. Ask an accountant (§7.1).
+1. **VAT treatment** (agent vs principal) and invoice wording. Pricing is VAT-inclusive either way; only the margin (~23% or ~18%) and the invoice wording depend on the answer. Ask an accountant (§7.1).
 2. **Seasonal prize pool:** size and funding source.
 3. **Domains:** the name is **Promoet**. Secure `promoet.ng` / `promoet.com` plus a short redirect domain for tracking links (the doc uses `pmt.ng` as a placeholder; check availability).
 4. **Legal review** of the funds-holding structure, ARCON obligations and terms of service (§11).
