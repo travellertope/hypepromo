@@ -328,8 +328,18 @@ are:
 |---|---|
 | Creator uploads a screenshot of view counts | ❌ Easy to fake, impossible to audit at scale |
 | Count loads of our link-preview image | ❌ Counts crawlers and caches, not people |
-| **Read view counts from the platform's official API** after the creator connects their account (OAuth): Instagram Graph API insights (Business/Creator accounts), TikTok Display API (`view_count` on the creator's videos), YouTube Data API. X only through paid API tiers | ✅ Works. The creator links the specific post URL, and Promoet polls the view count for N days (e.g. 7) and bills per 1,000 new views |
+| **Read view counts from the platform's official API** after the creator connects their account (see the platform table below) | ✅ Works. The creator links the specific post URL, and Promoet polls the view count for N days (e.g. 7) and bills per 1,000 new views |
 | WhatsApp Status views | ❌ There is no API for personal Status views. WhatsApp **Channels** show follower counts but no reliable per-post view API |
+
+**Platform API access (checked October 2026; re-check before building):**
+
+| Platform | Cost to Promoet | Which creator accounts | View data | Approval needed |
+|---|---|---|---|---|
+| **Instagram** (Instagram API with Instagram Login) | Free | **Professional accounts only** (Creator or Business). Personal accounts can't connect, but switching to a free Creator account takes a minute in Instagram settings | `views` and reach per post, reel and story through media insights. Story insights only exist while the story is live (24 h), so poll during that window | Meta App Review for the insights permission, plus Meta Business Verification of Promoet's company (CAC documents) |
+| **TikTok** (Login Kit + Display API) | Free | Any account, personal included | `view_count`, likes, comments and shares on the creator's own videos | TikTok app review: submit the app with a demo video of the login flow |
+| **YouTube** (Data API v3) | Free within the daily quota (10,000 units; one call checks up to 50 videos) | Any channel | `viewCount` is public for every video. OAuth is only needed to prove channel ownership (or use a code in the channel description instead) | Google OAuth verification only if we use OAuth sign-in |
+| **X / Twitter** (API v2) | **Paid**: no free tier for new developers since Feb 2026. Pay-per-use at about **$0.005 per post read** | Any account | `impression_count` in a post's public metrics. Polling a post daily for 7 days ≈ $0.035, so 1,000 tracked posts per month ≈ $35 | Developer account with billing set up. Ownership can be proven with a code in the bio (no OAuth needed) |
+| **WhatsApp Status** | — | — | No API exists | Not possible |
 
 Even views from the API can be inflated with cheap bought views. So
 "Verified Views" campaigns need safeguards:
