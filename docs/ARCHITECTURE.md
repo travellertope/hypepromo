@@ -1,9 +1,9 @@
-# HypeQuest — System Plan & Architecture
+# Promoet — System Plan & Architecture
 
 > Status: **Planning draft v1** (2026-10-06)
-> Source: the single-file prototype in [`prototype/index.html`](../prototype/index.html)
+> Source: the single-file prototype in [`prototype/index.html`](../prototype/index.html) (built under the working name "HypeQuest")
 
-HypeQuest is a two-sided marketplace for Nigeria. **Advertisers** fund
+Promoet is a two-sided marketplace for Nigeria. **Advertisers** fund
 pay-per-click (CPC) campaigns. **Micro-influencers ("creators")** pick up
 campaigns as *quests*, post the ad assets on TikTok / IG / X / WhatsApp Status
 with a unique tracking link, and earn **85% of the CPC for every verified
@@ -38,14 +38,14 @@ colour tokens, Poppins, and the glass-panel cards.
 
 ```mermaid
 flowchart LR
-  C[Creator<br/>mobile PWA] -->|claims quests, shares links, withdraws| HQ[(HypeQuest)]
-  A[Advertiser<br/>web portal] -->|funds campaigns, uploads assets, views analytics| HQ
-  V[Visitor<br/>clicks a link on TikTok/IG/X/WhatsApp] -->|GET /r/code| HQ
-  OPS[Admin / Ops<br/>console] -->|moderation, fraud review, payouts| HQ
-  HQ -->|302 redirect| LP[Advertiser landing page]
-  HQ <-->|charges, transfers, webhooks| PSP[Paystack / Flutterwave]
-  HQ <-->|KYC: BVN/NIN| KYC[KYC provider]
-  HQ -->|OTP, alerts| MSG[SMS / WhatsApp / Email / Web Push]
+  C[Creator<br/>mobile PWA] -->|claims quests, shares links, withdraws| PM[(Promoet)]
+  A[Advertiser<br/>web portal] -->|funds campaigns, uploads assets, views analytics| PM
+  V[Visitor<br/>clicks a link on TikTok/IG/X/WhatsApp] -->|GET /r/code| PM
+  OPS[Admin / Ops<br/>console] -->|moderation, fraud review, payouts| PM
+  PM -->|302 redirect| LP[Advertiser landing page]
+  PM <-->|charges, transfers, webhooks| PSP[Paystack / Flutterwave]
+  PM <-->|KYC: BVN/NIN| KYC[KYC provider]
+  PM -->|OTP, alerts| MSG[SMS / WhatsApp / Email / Web Push]
 ```
 
 | Surface | Users | Main screens (mapped from the prototype) |
@@ -53,7 +53,7 @@ flowchart LR
 | **Creator app** (mobile-first PWA) | Influencers | Quests (`tab-quests`), Quest detail + link + media kit (`campaign-modal`), Loot Vault (`tab-vault`), Guild Rankings (`tab-guild`), Profile/KYC/Bank, Notifications |
 | **Advertiser portal** | Brands and agencies (organisations with members) | Command Center (`tab-studio`), Create Campaign wizard (`advertiser-modal`), Wallet/Funding, Analytics, Invoices |
 | **Admin console** | Internal ops | Campaign & creative review, Fraud queue, Payout approvals, User/KYC management, Ledger explorer, Season config |
-| **Redirect edge** | Anonymous visitors | `https://hq.ng/r/{code}`: no UI, or a challenge page only when traffic looks risky |
+| **Redirect edge** | Anonymous visitors | `https://pmt.ng/r/{code}`: no UI, or a challenge page only when traffic looks risky |
 
 ---
 
@@ -154,7 +154,7 @@ of the engineering effort goes here.
 1. Creator taps **Accept Quest & Get Link**. The client calls `POST /quests/{campaignId}/claim`.
 2. The API checks: campaign is `live` with budget left, creator meets the targeting rules (tier, niche, state, minimum level), creator has enough **energy**, and has no existing claim for this campaign.
 3. The API creates a `referral_link` with a **random 8-character base62 code** (unguessable, not derived from the username), spends energy, and writes `code → {link_id, campaign_id, target_url, status}` to Workers KV.
-4. Response: link `https://hq.ng/r/Xk29PqLm`, creatives, suggested captions, and the required disclosure text (`#ad` / `#sponsored`).
+4. Response: link `https://pmt.ng/r/Xk29PqLm`, creatives, suggested captions, and the required disclosure text (`#ad` / `#sponsored`).
 
 > The prototype's `?r=user_id&ad=campaign_slug` format leaks identities and
 > can be tampered with. Use opaque codes instead.
@@ -174,12 +174,12 @@ sequenceDiagram
   V->>W: GET /r/Xk29PqLm
   W->>KV: lookup code
   KV-->>W: link_id, campaign_id, target_url, status
-  W->>W: collect signals (IP, ASN, country, UA, JA4, CF bot score, headers, hq_vid cookie)
+  W->>W: collect signals (IP, ASN, country, UA, JA4, CF bot score, headers, pm_vid cookie)
   alt high-risk signals
     W-->>V: lightweight Turnstile challenge page, then continue
   end
   W-)Q: enqueue ClickEvent{click_id (ULID), link_id, signals, ts}
-  W-->>V: 302 → target_url?hq_click=click_id  (+ Set-Cookie hq_vid)
+  W-->>V: 302 → target_url?pm_click=click_id  (+ Set-Cookie pm_vid)
   V->>LP: loads advertiser page
   Q-)S: batch of click events
   S->>S: run fraud rules → verdict
@@ -187,7 +187,7 @@ sequenceDiagram
 ```
 
 - The worker **never blocks on the database.** It enqueues and redirects. If KV has no entry, it falls back to an API lookup. Paused or exhausted campaigns still redirect (so the visitor isn't left on a dead link) but are recorded as `not_billable`.
-- `hq_click` is appended so advertisers can report conversions later (Phase 2).
+- `pm_click` is appended so advertisers can report conversions later (Phase 2).
 - Click IDs are ULIDs: sortable and unique, and they double as idempotency keys.
 
 ### 5.3 Fraud rules (rules engine v1)
@@ -200,7 +200,7 @@ Each rule adds to a risk score or forces a verdict. The output is
 | 1 | Edge bot score / known bot UA / headless markers | Invalid |
 | 2 | ASN is a datacenter, VPN or hosting provider | Invalid (high risk) |
 | 3 | Geo outside campaign targeting (default: NG) | `not_billable` |
-| 4 | Same visitor (`hq_vid` cookie, or a fingerprint hash of UA + accept-language + JA4 + IP /24) on the same **campaign** within 24 h, through *any* creator | Duplicate, not billable. This stops creators swapping links with each other |
+| 4 | Same visitor (`pm_vid` cookie, or a fingerprint hash of UA + accept-language + JA4 + IP /24) on the same **campaign** within 24 h, through *any* creator | Duplicate, not billable. This stops creators swapping links with each other |
 | 5 | Visitor matches the **creator's own** device or session fingerprint | Invalid (self-click) |
 | 6 | Link velocity is far above the creator's baseline, or clicks arrive in suspiciously regular intervals | `review`, and the link is auto-throttled |
 | 7 | Very short time between link creation and a burst of clicks with no referrer from a social platform | Higher risk score |
@@ -539,7 +539,7 @@ person.
 ### Phase 2 — Public launch (weeks 11–18)
 - Self-serve advertiser onboarding with CAC/RC verification
 - Targeting (state, niche, level, platform), daily caps, scheduling
-- Conversion pixel and CPA/CPL campaign option, using `hq_click` attribution
+- Conversion pixel and CPA/CPL campaign option, using `pm_click` attribution
 - Automatic payouts below a risk threshold, retries, reconciliation dashboard
 - Seasons, leaderboards (global/state/niche), badges, streaks
 - Web push, WhatsApp notifications, media-kit zips, post-proof review
@@ -574,4 +574,4 @@ person.
 6. **Who launches the first campaigns:** a sales-led managed service at first, or self-serve from day one?
 7. **Hosting preference:** Supabase-managed Postgres/Auth (already connected) or plain managed Postgres plus our own auth?
 8. **Seasonal prize pool** size and funding source.
-9. **Brand name and domains:** `hypequest.ng` plus a short redirect domain (for example `hq.ng`, if available).
+9. **Domains:** the name is **Promoet**. Secure `promoet.ng` / `promoet.com` plus a short redirect domain for tracking links (the doc uses `pmt.ng` as a placeholder; check availability).
