@@ -150,6 +150,13 @@ export async function claimQuest(
     }).catch(() => {/* KV write failure is non-fatal */})
   })
 
+  // Award XP for claiming (non-fatal)
+  import('../xp/service.ts').then(({ awardXp }) =>
+    awardXp(creatorId, 'quest_claim', 10, result.questId)
+  ).catch((err) => {
+    console.error('XP award failed for quest claim', result.questId, err)
+  })
+
   return {
     questId: result.questId,
     campaignId,
