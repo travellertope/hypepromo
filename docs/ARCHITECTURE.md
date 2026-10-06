@@ -56,6 +56,18 @@ flowchart LR
 | **Admin console** | Internal ops | Campaign & creative review, Fraud queue, Payout approvals, User/KYC management, Ledger explorer, Season config |
 | **Redirect edge** | Anonymous visitors | `https://pmt.ng/r/{code}`: no UI, or a challenge page only when traffic looks risky |
 
+### Earnings display rule
+
+Creators see **naira amounts, not percentages**. Every quest card, quest
+detail screen and notification says what the creator gets, for example
+**"You earn ₦375 per click"** or **"You earn ₦1,500 per signup"**. Creator
+screens never show the advertiser's price or the platform's share. The
+Vault shows the same naira figures.
+
+- The amount is computed on the server (`creator_unit_kobo = floor(unit_price_kobo × creator_share_bps / 10000)`) and sent to the app ready to display, so the client never does the split.
+- Advertisers see the full breakdown in the campaign wizard: the price per click they pay, the 25% commission, and the line **"Creators will see: You earn ₦X per click"**, so they can judge how attractive their offer is.
+- The creator terms of service still state the commission plainly. The rule is about what quest screens emphasise, not about hiding the split.
+
 ---
 
 ## 3. High-level architecture
