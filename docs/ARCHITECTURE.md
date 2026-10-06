@@ -270,20 +270,18 @@ Example (7-day hold):
 | Tue–Sun | Nightly re-scoring finds 20 clicks from a click farm → ₦1,500 reversed, ₦2,000 back to the advertiser's campaign |
 | Mon 13 Oct | ₦7,500 moves to *available*; Ada can withdraw |
 
-Recommended hold periods at launch (configurable):
+**Hold period: a flat 7 days for every creator**, whatever their level or
+account age. It is simple to explain, and it's the same on every channel.
 
-| Situation | Hold |
+| Situation | When earnings become available |
 |---|---|
-| New creators (levels 1–4) | **7 days** |
-| Levels 5–9 with a clean record | 5 days |
-| Level 10+ with a clean record for 90 days | 3 days |
-| Any link currently under `review` | Frozen until reviewed |
-| WhatsApp-channel earnings, first 30 days of a creator account | 7 days regardless of level |
-| CPA conversions | Advertiser approval window (§5.7), then 3 days |
+| Clicks (all creators, all channels) | **7 days** after the click |
+| CPA conversions | When the conversion is approved (by the advertiser, or automatically after 14 days, §5.7) **and** is at least 7 days old |
+| Any link currently under `review` | Frozen until reviewed, then follows the rule above |
 
 The rules:
 
-- Earnings land in the creator's **pending** balance. After **N days** (default 7, shorter at higher levels), a settlement job moves them to **available**.
+- Earnings land in the creator's **pending** balance. After **7 days** (a single config value), a settlement job moves them to **available**.
 - If fraud is confirmed during the hold, the click is reversed: creator pending −, platform fee −, campaign escrow +. The advertiser only pays for clicks that survive the hold.
 - After release, earnings are final for the creator. Fraud found later is handled through account action and future earnings, not negative balances.
 
@@ -321,7 +319,7 @@ campaign wizard):
 
 - **Attribution:** last valid click wins, within a 7-day window by default (the advertiser can set 1–30 days). A promo-code redemption always wins over a link click.
 - **Dedupe:** each `(campaign, order_id)` is counted once, and each visitor once per campaign for lead campaigns.
-- **Approval window:** conversions arrive as *pending approval*. The advertiser can reject one with a reason (refund, fake signup) within **14 days**. After that it is **auto-approved**. This is shown to creators as part of the hold.
+- **Approval window:** conversions arrive as *pending approval*. The advertiser can reject one with a reason (refund, fake signup) within **14 days**. After that it is **auto-approved**. This is shown to creators as part of the hold (§5.5).
 - **Guarding against advertisers who under-report or reject unfairly:** track each advertiser's rejection rate and click → conversion rate. If it looks wrong, ops reviews it. Advertisers with high rejection rates lose access to top creators. Creators can see each campaign's approval rate before claiming.
 - **Conversion fraud signals:** a conversion within seconds of the click, many conversions from one device, the same visitor converting through several creators, and email or phone patterns shared by many leads.
 - **Billing:** the same budget-reservation transaction as for clicks, using `unit_price_kobo`. The 75/25 split applies.
@@ -378,7 +376,7 @@ to friends who click out of politeness. The design:
 1. **A separate link per channel.** When claiming a quest, the creator picks channels and gets a separate code for each (`/r/Xk29PqLm` for TikTok, `/r/Wa7Hq2Zs` for WhatsApp). Stats, caps and risk are tracked per channel.
 2. **Share-ready kit.** A 9:16 Status image or video with the caption, link and `#ad` already composed. A one-tap "Share to WhatsApp" button (`https://wa.me/?text=…` on the web, the share sheet in the PWA). Open Graph tags on the link make the preview look good.
 3. **Engaged clicks only.** For WhatsApp links, a click is billable only if the landing-page beacon confirms the page loaded and stayed open for ≥ 3 seconds, or a conversion follows. This requires the advertiser's one-line script, so campaigns without it can only be CPA on WhatsApp.
-4. **Stricter limits:** lower per-creator daily caps on the WhatsApp channel until the creator builds a track record. The 7-day hold for the first 30 days. Rules 4–6 in §5.3 apply per channel.
+4. **Stricter limits:** lower per-creator daily caps on the WhatsApp channel until the creator builds a track record. Rules 4–6 in §5.3 apply per channel.
 5. **Channel quality score.** For each creator and channel, compare downstream quality (dwell rate, conversion rate, reversal rate) with the campaign average. Low-quality channels get throttled. High-quality WhatsApp sharers unlock higher caps and premium campaigns.
 6. **Advertiser control.** Campaigns opt in to channels. WhatsApp is on by default for CPA and off by default for CPC.
 7. **Promo codes** (§5.7) are the most reliable way for WhatsApp sharers to earn, especially for vendors and service businesses.
@@ -408,7 +406,7 @@ fraudsters would farm levels the same way they farm clicks.
 | Mechanic | Rules (initial; all configurable in admin) |
 |---|---|
 | **XP** | +10 when claiming a quest. +1 per valid click **after release** (daily cap). +50 the first time a quest gets 10 valid clicks. +25 for an approved post-proof. Daily login streak bonus. −XP when fraud is confirmed |
-| **Levels** | XP curve `xp(L) = 100·L^1.6`. Levels unlock **trust perks**: shorter hold period, higher daily withdrawal limit, access to premium (higher-CPC) campaigns, more energy |
+| **Levels** | XP curve `xp(L) = 100·L^1.6`. Levels unlock **trust perks** (the 7-day hold never changes): higher daily withdrawal limit, higher per-campaign caps, access to premium (higher-CPC) campaigns, more energy |
 | **Energy** | Max 100 (more at higher levels). Claiming a quest costs 10–25 depending on campaign tier. Regenerates +1 every 15 min. This limits link spraying and pushes creators to pick campaigns they will actually post |
 | **Streaks** | Days in a row with at least one valid click. Badges at 7, 30 and 100 days |
 | **Badges** | Niche badges ("Tech Titan"), "First ₦10k", "Clean Record 90d" (no fraud flags) |
@@ -722,7 +720,7 @@ person.
 - **Self-serve advertiser sign-up**, verification tiers, campaign wizard (CPC or CPA), creative upload, automated checks plus human review (§5.10)
 - Advertiser funding through Paystack with the fee grossed up, plus dedicated virtual accounts for bank transfers
 - Quest feed, claim, **per-channel links including WhatsApp**, caption + `#ad` template, Status-ready share kit
-- Redirect worker, click queue, rules engine v1, link-preview crawler filter, budget reservation, level-based hold
+- Redirect worker, click queue, rules engine v1, link-preview crawler filter, budget reservation, 7-day hold
 - **CPA:** S2S postback, `promoet.js` pixel + engagement beacon, creator promo codes, approval window
 - Submit Meta and TikTok developer app reviews (needed for Verified Views in Phase 2)
 - Creator wallet (pending/available), earnings feed, bank account + KYC, **manually approved** withdrawals
@@ -767,7 +765,7 @@ person.
 | 1 | Pricing models | **CPC and CPA at launch.** CPM as "Verified Views" on API-connected accounts in Phase 2 | §5.7, §5.8 |
 | 2 | Fee & charges | **25%** taken **from** the advertiser's budget (raised from 15% so VAT can be paid out of it), 75% to creators. Advertiser pays Paystack fees when funding. Creator pays transfer fees when withdrawing | §7.1 |
 | 3 | Minimums | CPC ₦50, CPA ₦300/₦500, budget ₦25k (CPC) / ₦50k (CPA), top-up ₦10k, withdrawal ₦1k, 10% max share per creator | §7.1 |
-| 4 | Hold period | 7 days for new creators, reduced to 5 and then 3 days by level and clean record. CPA follows the advertiser approval window | §5.5 |
+| 4 | Hold period | **Flat 7 days for everyone**, regardless of level or account age. CPA: available once approved and at least 7 days old | §5.5 |
 | 5 | WhatsApp Status | Supported, with separate per-channel links, engaged-click rule, promo codes, stricter caps and quality scores | §5.9 |
 | 6 | Go-to-market | **Self-serve advertisers from day one**, with automated safeguards and human review of every campaign | §5.10 |
 | 7 | Hosting | **Supabase**: new project `promoet`, London (eu-west-2) | §3 |
