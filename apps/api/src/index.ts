@@ -6,6 +6,9 @@ import rateLimit from '@fastify/rate-limit'
 import sensible from '@fastify/sensible'
 import authPlugin from './plugins/auth.ts'
 import { healthRoutes } from './routes/health.ts'
+import campaignRoutes from './modules/campaigns/router.ts'
+import questRoutes from './modules/quests/router.ts'
+import clickRoutes from './modules/clicks/router.ts'
 
 const isDev = process.env['NODE_ENV'] !== 'production'
 
@@ -30,6 +33,9 @@ await app.register(authPlugin) // adds app.authenticate + request.authUser
 
 // Routes
 await app.register(healthRoutes, { prefix: '/health' })
+await app.register(campaignRoutes, { prefix: '/v1' })
+await app.register(questRoutes, { prefix: '/v1' })
+await app.register(clickRoutes, { prefix: '/v1' })
 
 const port = Number(process.env['PORT'] ?? 3001)
 const host = process.env['HOST'] ?? '0.0.0.0'

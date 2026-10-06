@@ -1,0 +1,24 @@
+name = "promoet-redirect"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ── KV namespace ─────────────────────────────────────────────────────────────
+# Run `wrangler kv namespace create LINKS` then fill in the IDs below.
+[[kv_namespaces]]
+binding = "LINKS"
+id = "PLACEHOLDER_KV_ID"
+preview_id = "PLACEHOLDER_KV_PREVIEW_ID"
+
+# ── Queue producer ────────────────────────────────────────────────────────────
+# Run `wrangler queues create promoet-clicks` then fill below.
+# The consumer is a separate worker that calls POST /internal/clicks on the API.
+[[queues.producers]]
+binding = "CLICK_QUEUE"
+queue = "promoet-clicks"
+
+# ── Routes ────────────────────────────────────────────────────────────────────
+# Uncomment and configure after pointing promoet.com to this worker.
+# [[routes]]
+# pattern = "promoet.com/r/*"
+# zone_name = "promoet.com"
