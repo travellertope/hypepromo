@@ -2,7 +2,7 @@
 
 A gamified pay-per-click influencer marketplace for Nigeria. Advertisers fund
 CPC campaigns. Micro-influencers claim them as quests, share tracked links and
-earn 75% of each verified click or conversion, on the platforms they choose. The game layer (XP, levels, energy, seasons,
+earn 75% of each verified click or conversion, on WhatsApp Status, X, Facebook, Instagram and Telegram. The game layer (XP, levels, energy, seasons,
 guilds) drives engagement and also works as the trust system.
 
 - **System plan & architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
