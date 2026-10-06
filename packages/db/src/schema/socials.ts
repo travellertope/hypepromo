@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, timestamp, pgEnum, unique } from 'drizzle-orm/pg-core'
 import { creators } from './creators.ts'
 
 export const socialPlatformEnum = pgEnum('social_platform', [
@@ -19,4 +19,4 @@ export const creatorSocials = pgTable('creator_socials', {
   verifiedAt: timestamp('verified_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (t) => [unique().on(t.creatorId, t.platform)])

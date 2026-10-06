@@ -1,10 +1,14 @@
-import { eq, and, desc, lt, or, isNull, sql } from 'drizzle-orm'
+import { eq, and, desc, lt, or, isNull, sql, count } from 'drizzle-orm'
 import { db } from '@promoet/db/client'
 import {
   campaigns,
   advertisers,
+  clicks,
+  referralLinks,
+  quests,
 } from '@promoet/db/schema'
 import { creatorUnit } from '@promoet/config'
+import { getBalance, advertiserWallet } from '@promoet/ledger'
 import type {
   CreateCampaign,
   UpdateCampaign,
@@ -360,4 +364,75 @@ export async function getAdminReviewQueue(
     hasMore && last ? encodeCursor(last.createdAt, last.id) : null
 
   return { items: items.map(toCampaignResponse), nextCursor }
+}
+
+// ── Go-live ───────────────────────────────────────────────────────────────────
+// Transitions a funded campaign to live after confirming the advertiser has
+// enough wallet balance to cover at least one unit price.
+export async function goLiveCampaign(
+  id: string,
+  advertiserId: string,
+): Promise<CampaignResponse> {
+  const [existing] = await db
+    .select({ status: campaigns.status, unitPriceKobo: campaigns.unitPriceKobo })
+    .from(campaigns)
+    .where(and(eq(campaigns.id, id), eq(campaigns.advertiserId, advertiserId)))
+    .limit(1)
+
+  if (!existing) throw new Error('NOT_FOUND')
+  if (existing.status !== 'funded') throw new Error('NOT_FUNDED')
+
+  const balance = await getBalance(db, advertiserWallet(advertiserId))
+  // Liability accounts: negative sum = we owe the advertiser
+  const available = balance < 0n ? -balance : 0n
+
+  if (available < existing.unitPriceKobo) throw new Error('INSUFFICIENT_FUNDS')
+
+  const [updated] = await db
+    .update(campaigns)
+    .set({ status: 'live', startsAt: new Date(), updatedAt: new Date() })
+    .where(eq(campaigns.id, id))
+    .returning()
+
+  if (!updated) throw new Error('UPDATE_FAILED')
+  return toCampaignResponse(updated)
+}
+
+// ── Advertiser stats ──────────────────────────────────────────────────────────
+
+export interface AdvertiserStats {
+  totalClicks: number
+  validClicks: number
+  rejectedClicks: number
+  validPct: number
+  totalSpendKobo: number
+}
+
+export async function getAdvertiserStats(advertiserId: string): Promise<AdvertiserStats> {
+  // Get all click IDs for campaigns owned by this advertiser
+  const [row] = await db
+    .select({
+      total:    sql<string>`count(${clicks.id})`,
+      valid:    sql<string>`count(${clicks.id}) filter (where ${clicks.status} in ('held', 'released'))`,
+      rejected: sql<string>`count(${clicks.id}) filter (where ${clicks.status} = 'rejected')`,
+      spend:    sql<string>`coalesce(sum(${clicks.unitPriceKobo}) filter (where ${clicks.status} != 'rejected'), 0)`,
+    })
+    .from(campaigns)
+    .innerJoin(quests, eq(quests.campaignId, campaigns.id))
+    .innerJoin(referralLinks, eq(referralLinks.questId, quests.id))
+    .innerJoin(clicks, eq(clicks.linkId, referralLinks.id))
+    .where(eq(campaigns.advertiserId, advertiserId))
+
+  const total    = Number(row?.total ?? 0)
+  const valid    = Number(row?.valid ?? 0)
+  const rejected = Number(row?.rejected ?? 0)
+  const spend    = Number(row?.spend ?? 0)
+
+  return {
+    totalClicks: total,
+    validClicks: valid,
+    rejectedClicks: rejected,
+    validPct: total > 0 ? Math.round((valid / total) * 10000) / 100 : 0,
+    totalSpendKobo: spend,
+  }
 }

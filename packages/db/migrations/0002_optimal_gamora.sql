@@ -1,0 +1,1 @@
+ALTER TABLE "creator_socials" ADD CONSTRAINT "creator_socials_creator_id_platform_unique" UNIQUE("creator_id","platform");

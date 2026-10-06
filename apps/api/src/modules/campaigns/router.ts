@@ -151,6 +151,33 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
     },
   )
 
+  // ── Go live ──────────────────────────────────────────────────────────────
+  app.post<{ Params: { id: string } }>(
+    '/me/campaigns/:id/go-live',
+    { preHandler: requireAdvertiser },
+    async (request, reply) => {
+      try {
+        const campaign = await svc.goLiveCampaign(
+          request.params.id,
+          request.authUser.id,
+        )
+        return reply.send({ data: campaign })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : ''
+        if (msg === 'NOT_FOUND')         return reply.status(404).send({ error: 'Not found' })
+        if (msg === 'NOT_FUNDED')        return reply.status(409).send({ error: 'Campaign must be in funded state' })
+        if (msg === 'INSUFFICIENT_FUNDS') return reply.status(402).send({ error: 'Top up wallet before going live' })
+        throw err
+      }
+    },
+  )
+
+  // ── Advertiser stats ─────────────────────────────────────────────────────
+  app.get('/me/stats', { preHandler: requireAdvertiser }, async (request, reply) => {
+    const stats = await svc.getAdvertiserStats(request.authUser.id)
+    return reply.send(stats)
+  })
+
   // ── Admin: review queue ──────────────────────────────────────────────────
   app.get(
     '/admin/campaigns/review',

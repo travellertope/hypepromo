@@ -15,6 +15,13 @@
       "when": 1791324090178,
       "tag": "0001_funny_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791325684909,
+      "tag": "0002_optimal_gamora",
+      "breakpoints": true
     }
   ]
 }
