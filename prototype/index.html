@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HypeQuest - Gamified Social Ads & Rewards (Nigeria)</title>
+    <!-- 
+      ========================================================================
+      DEVELOPER TECHNICAL DOCUMENTATION & ARCHITECTURE SPECIFICATION
+      ========================================================================
+      Project: HypeQuest PWA (Nigeria Edition)
+      Architecture Style: Single-File Component (SFC) Vanilla Architecture
+      Frontend Library: Tailwind CSS v3 (CDN-injected with custom configuration)
+      Icons: FontAwesome 6.4.0 (CDN)
+      Typography: Poppins (Google Fonts)
+      
+      CORE SYSTEM MECHANICS & STATE MODEL:
+      1. Advertiser Budgeting & CPC Logic:
+         - Advertisers define Cost Per Click (CPC) in Nigerian Naira (₦).
+         - Internal Financial Split: The advertiser sets the gross CPC (e.g. ₦500). 
+           The system internally retains a 15% platform infrastructure cut, and 
+           allocates the remaining 85% to the micro-influencer's loot vault upon 
+           verified click web-hook confirmation.
+         - Click verification utilizes anti-fraud cookie & IP fingerprinting hash 
+           simulated in the back-end worker node.
+           
+      2. PWA & Offline Storage Strategy:
+         - Designed for Service Worker registration (offline caching of assets).
+         - LocalStorage state persistence for user XP, energy, vault balance, 
+           and active campaign referrals.
+         
+      3. Security & DOM Safeguards:
+         - Zero use of `alert()` or `confirm()` modals (replaced with custom styled toast notifications and modal layers).
+         - Clipboard operations executed via fallback-safe legacy APIs (`document.execCommand('copy')`).
+      ========================================================================
+    -->
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for gaming icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Poppins for gaming UI -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fdf4ff',
+                            500: '#d946ef',
+                            600: '#c026d3',
+                            700: '#a21caf',
+                            900: '#701a75',
+                        },
+                        cyber: {
+                            dark: '#0a0314',
+                            card: '#140728',
+                            border: '#3b186b',
+                            neon: '#00f0ff',
+                            accent: '#ff007f'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0a0314;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        .glow-neon {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+        .glow-pink {
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
+        }
+        .glass-panel {
+            background-color: #140728;
+            border: 2px solid #3b186b;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0314;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b186b;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col md:flex-row antialiased">
+
+    <aside class="hidden md:flex flex-col w-64 glass-panel border-r border-cyber-border p-6 z-20 shrink-0">
+        <div class="flex items-center space-x-3 mb-8">
+            <div class="w-10 h-10 rounded-xl bg-cyber-accent flex items-center justify-center glow-pink">
+                <i class="fa-solid fa-gamepad text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-xl tracking-wider text-cyber-neon">HYPEQUEST</h1>
+                <span class="text-xs text-purple-300 font-medium">Nigeria Edition v2.9</span>
+            </div>
+        </div>
+
+        <!-- User Quick Profile Widget -->
+        <div class="bg-cyber-dark rounded-2xl p-4 border border-cyber-border mb-6">
+            <div class="flex items-center space-x-3 mb-3">
+                <div class="relative">
+                    <img src="https://placehold.co/100x100/3b186b/00f0ff?text=👑" alt="Avatar" class="w-12 h-12 rounded-full border-2 border-cyber-neon object-cover">
+                    <span class="absolute -bottom-1 -right-1 bg-cyber-accent text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white">Lvl 14</span>
+                </div>
+                <div class="overflow-hidden">
+                    <h3 class="font-bold text-sm truncate text-white">Tunde "HypeLord"</h3>
+                    <p class="text-xs text-cyber-neon">⚡ 4,280 XP to Lvl 15</p>
+                </div>
+            </div>
+            <!-- XP Progress Bar -->
+            <div class="w-full bg-cyber-border h-2 rounded-full overflow-hidden mb-2">
+                <div class="bg-cyber-neon h-full w-[72%] rounded-full"></div>
+            </div>
+            <div class="flex justify-between text-xs text-purple-300 font-semibold">
+                <span>⚡ Energy: 85/100</span>
+                <span class="text-emerald-400">₦265,400</span>
+            </div>
+        </div>
+
+        <!-- Nav Links -->
+        <nav class="space-y-2 flex-1">
+            <button onclick="switchTab('quests')" id="nav-quests" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 bg-cyber-border text-cyber-neon shadow-md">
+                <i class="fa-solid fa-scroll text-lg w-6"></i>
+                <span>Active Quests</span>
+                <span class="ml-auto bg-cyber-accent text-white text-xs px-2 py-0.5 rounded-full">5</span>
+            </button>
+            <button onclick="switchTab('studio')" id="nav-studio" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm text-purple-300 hover:bg-cyber-border hover:text-white transition-all duration-200">
+                <i class="fa-solid fa-wand-magic-sparkles text-lg w-6"></i>
+                <span>Brand Arena</span>
+            </button>
+            <button onclick="switchTab('vault')" id="nav-vault" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm text-purple-300 hover:bg-cyber-border hover:text-white transition-all duration-200">
+                <i class="fa-solid fa-vault text-lg w-6"></i>
+                <span>Loot Vault</span>
+            </button>
+            <button onclick="switchTab('guild')" id="nav-guild" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm text-purple-300 hover:bg-cyber-border hover:text-white transition-all duration-200">
+                <i class="fa-solid fa-users-rectangle text-lg w-6"></i>
+                <span>Guild Rankings</span>
+            </button>
+            <button onclick="switchTab('devdocs')" id="nav-devdocs" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm text-purple-300 hover:bg-cyber-border hover:text-white transition-all duration-200">
+                <i class="fa-solid fa-code text-lg w-6"></i>
+                <span>Dev Architecture</span>
+            </button>
+        </nav>
+
+        <!-- Mode Toggle for Advertiser vs Influencer -->
+        <div class="pt-4 border-t border-cyber-border">
+            <button onclick="openAdvertiserModal()" class="w-full py-3 px-4 rounded-xl bg-purple-900 text-white font-bold text-xs uppercase tracking-wider shadow hover:bg-purple-800 transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-bullhorn"></i>
+                <span>Advertiser Portal</span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-cyber-border p-3 flex justify-around items-center z-50 bg-[#140728]">
+        <button onclick="switchTab('quests')" id="nm-quests" class="flex flex-col items-center text-cyber-neon">
+            <i class="fa-solid fa-scroll text-lg"></i>
+            <span class="text-[10px] font-semibold mt-1">Quests</span>
+        </button>
+        <button onclick="switchTab('studio')" id="nm-studio" class="flex flex-col items-center text-purple-300">
+            <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+            <span class="text-[10px] font-semibold mt-1">Arena</span>
+        </button>
+        <button onclick="switchTab('vault')" id="nm-vault" class="flex flex-col items-center text-purple-300">
+            <i class="fa-solid fa-vault text-lg"></i>
+            <span class="text-[10px] font-semibold mt-1">Vault</span>
+        </button>
+        <button onclick="switchTab('devdocs')" id="nm-devdocs" class="flex flex-col items-center text-purple-300">
+            <i class="fa-solid fa-code text-lg"></i>
+            <span class="text-[10px] font-semibold mt-1">Tech</span>
+        </button>
+        <button onclick="openAdvertiserModal()" class="flex flex-col items-center text-cyber-accent">
+            <i class="fa-solid fa-bullhorn text-lg"></i>
+            <span class="text-[10px] font-semibold mt-1">Post Ad</span>
+        </button>
+    </div>
+
+    <main class="flex-1 overflow-y-auto pb-24 md:pb-8 p-4 md:p-8">
+        
+        <!-- Top Header for Mobile & Quick Stats -->
+        <header class="flex justify-between items-center mb-6 bg-cyber-card p-4 rounded-2xl border border-cyber-border">
+            <div class="flex items-center space-x-3 md:hidden">
+                <div class="w-9 h-9 rounded-lg bg-cyber-accent flex items-center justify-center">
+                    <i class="fa-solid fa-gamepad text-white text-sm"></i>
+                </div>
+                <span class="font-bold text-lg text-cyber-neon">HYPEQUEST</span>
+            </div>
+            
+            <div class="hidden md:block">
+                <h2 id="page-title" class="text-2xl font-extrabold text-white">⚡ Active Hype Quests</h2>
+                <p class="text-xs text-purple-300">Share ad assets, get unique referral links, and earn Naira per verified click!</p>
+            </div>
+
+            <div class="flex items-center space-x-3 ml-auto">
+                <div class="bg-cyber-dark px-3 py-1.5 rounded-xl border border-cyber-border flex items-center space-x-2">
+                    <i class="fa-solid fa-coins text-yellow-400"></i>
+                    <span class="font-bold text-sm text-yellow-400">₦265,400</span>
+                </div>
+                <button onclick="showNotification('🔔 Notification: You earned ₦9,600 from your CyberStride quest link!')" class="w-10 h-10 rounded-xl bg-cyber-dark border border-cyber-border flex items-center justify-center text-cyber-neon hover:bg-cyber-border transition relative">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-cyber-accent"></span>
+                </button>
+            </div>
+        </header>
+
+        <div id="tab-quests" class="space-y-6">
+            <!-- Banner Hero Quest -->
+            <div class="relative rounded-3xl overflow-hidden p-6 md:p-8 bg-cyber-card border-2 border-cyber-neon shadow-xl">
+                <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+                    <i class="fa-solid fa-rocket text-9xl text-cyber-neon"></i>
+                </div>
+                <div class="relative z-10 max-w-xl">
+                    <div class="inline-flex items-center space-x-2 bg-cyber-dark border border-cyber-accent px-3 py-1 rounded-full text-xs font-bold text-cyber-accent mb-4">
+                        <i class="fa-solid fa-fire"></i>
+                        <span>FEATURED CAMPAIGN • HIGH CPC PAYOUT</span>
+                    </div>
+                    <h3 class="text-2xl md:text-3xl font-extrabold text-white mb-2">CyberStride Quantum Sneakers</h3>
+                    <p class="text-sm text-purple-200 mb-6">Drop these futuristic visual assets on TikTok, X (Twitter), or IG Reels. Earn 85% of advertiser CPC per verified unique click!</p>
+                    
+                    <div class="flex flex-wrap gap-4 mb-6">
+                        <div class="bg-cyber-dark px-4 py-2 rounded-xl border border-cyber-border">
+                            <span class="text-xs text-gray-400 block">Influencer Payout / Click</span>
+                            <span class="text-lg font-bold text-emerald-400">₦425</span>
+                        </div>
+                        <div class="bg-cyber-dark px-4 py-2 rounded-xl border border-cyber-border">
+                            <span class="text-xs text-gray-400 block">Quest Reward</span>
+                            <span class="text-lg font-bold text-purple-400">+500 XP</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button onclick="openCampaignModal('CyberStride Quantum Sneakers', '₦425', 'https://placehold.co/600x400/140728/00f0ff?text=CyberStride+Ad+Asset')" class="px-6 py-3 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-sm shadow hover:bg-cyan-400 transition flex items-center space-x-2">
+                            <i class="fa-solid fa-link"></i>
+                            <span>Accept Quest & Get Link</span>
+                        </button>
+                        <button onclick="previewAssets('CyberStride')" class="px-5 py-3 rounded-xl bg-cyber-dark border border-cyber-border text-white font-bold text-sm hover:bg-cyber-border transition flex items-center space-x-2">
+                            <i class="fa-solid fa-images"></i>
+                            <span>View Assets</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Categories -->
+            <div class="flex items-center space-x-2 overflow-x-auto pb-2">
+                <button class="px-4 py-2 rounded-xl bg-cyber-neon text-cyber-dark font-bold text-xs shrink-0">All Quests (12)</button>
+                <button class="px-4 py-2 rounded-xl bg-cyber-card border border-cyber-border text-purple-300 font-semibold text-xs hover:text-white shrink-0">🔥 High Payout</button>
+                <button class="px-4 py-2 rounded-xl bg-cyber-card border border-cyber-border text-purple-300 font-semibold text-xs hover:text-white shrink-0">🎮 Gaming & Tech</button>
+                <button class="px-4 py-2 rounded-xl bg-cyber-card border border-cyber-border text-purple-300 font-semibold text-xs hover:text-white shrink-0">👗 Fashion & Style</button>
+                <button class="px-4 py-2 rounded-xl bg-cyber-card border border-cyber-border text-purple-300 font-semibold text-xs hover:text-white shrink-0">⚡ Fintech & Crypto</button>
+            </div>
+
+            <!-- Quest Grid Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Card 1 -->
+                <div class="glass-panel rounded-3xl p-5 border border-cyber-border flex flex-col justify-between hover:border-cyber-neon transition-all duration-300 group">
+                    <div>
+                        <div class="relative rounded-2xl overflow-hidden mb-4 h-40 bg-cyber-dark">
+                            <img src="https://placehold.co/400x250/140728/ff007f?text=Aura+Energy" alt="Ad" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            <div class="absolute top-3 right-3 bg-cyber-dark px-2.5 py-1 rounded-full text-[10px] font-bold text-yellow-400 border border-yellow-500/30">
+                                ⚡ Easy Tier
+                            </div>
+                            <div class="absolute bottom-3 left-3 bg-cyber-dark px-2.5 py-1 rounded-full text-[10px] font-bold text-white border border-cyber-border">
+                                Aura Energy Drink
+                            </div>
+                        </div>
+                        <h4 class="font-bold text-lg text-white mb-1">Aura Blast Energy Canister</h4>
+                        <p class="text-xs text-purple-300 mb-4 line-clamp-2">Showcase the neon green can during your workout or gaming stream across Lagos & Abuja.</p>
+                        
+                        <div class="mb-4">
+                            <div class="bg-cyber-dark p-2.5 rounded-xl border border-cyber-border flex justify-between items-center">
+                                <span class="text-xs text-gray-400">Influencer Payout / Click</span>
+                                <span class="text-sm font-bold text-emerald-400">₦212</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="openCampaignModal('Aura Blast Energy Canister', '₦212', 'https://placehold.co/600x400/140728/ff007f?text=Aura+Energy+Ad')" class="w-full py-3 rounded-xl bg-purple-900 hover:bg-purple-800 text-white font-bold text-xs shadow transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Grab Link & Assets</span>
+                    </button>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="glass-panel rounded-3xl p-5 border border-cyber-border flex flex-col justify-between hover:border-cyber-neon transition-all duration-300 group">
+                    <div>
+                        <div class="relative rounded-2xl overflow-hidden mb-4 h-40 bg-cyber-dark">
+                            <img src="https://placehold.co/400x250/140728/00f0ff?text=Nexus+VR" alt="Ad" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            <div class="absolute top-3 right-3 bg-cyber-dark px-2.5 py-1 rounded-full text-[10px] font-bold text-cyber-neon border border-cyan-500/30">
+                                🔥 Hot Campaign
+                            </div>
+                            <div class="absolute bottom-3 left-3 bg-cyber-dark px-2.5 py-1 rounded-full text-[10px] font-bold text-white border border-cyber-border">
+                                Nexus VR Headset
+                            </div>
+                        </div>
+                        <h4 class="font-bold text-lg text-white mb-1">Nexus Pro VR Headset</h4>
+                        <p class="text-xs text-purple-300 mb-4 line-clamp-2">Unbox and test virtual reality gameplay. High CPC payout for tech creators.</p>
+                        
+                        <div class="mb-4">
+                            <div class="bg-cyber-dark p-2.5 rounded-xl border border-cyber-border flex justify-between items-center">
+                                <span class="text-xs text-gray-400">Influencer Payout / Click</span>
+                                <span class="text-sm font-bold text-emerald-400">₦722</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="openCampaignModal('Nexus Pro VR Headset', '₦722', 'https://placehold.co/600x400/140728/00f0ff?text=Nexus+VR+Ad')" class="w-full py-3 rounded-xl bg-purple-900 hover:bg-purple-800 text-white font-bold text-xs shadow transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Grab Link & Assets</span>
+                    </button>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="glass-panel rounded-3xl p-5 border border-cyber-border flex flex-col justify-between hover:border-cyber-neon transition-all duration-300 group">
+                    <div>
+                        <div class="relative rounded-2xl overflow-hidden mb-4 h-40 bg-cyber-dark">
+                            <img src="https://placehold.co/400x250/140728/d946ef?text=Zenith+Apparel" alt="Ad" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            <div class="absolute top-3 right-3 bg-cyber-dark px-2.5 py-1 rounded-full text-[10px] font-bold text-pink-400 border border-pink-500/30">
+                                👗 Streetwear
+                            </div>
+                            <div class="absolute bottom-3 left-3 bg-cyber-dark px-2.5 py-1 rounded-full text-[10px] font-bold text-white border border-cyber-border">
+                                Zenith Hoodies
+                            </div>
+                        </div>
+                        <h4 class="font-bold text-lg text-white mb-1">Zenith Cyberpunk Oversized Hoodie</h4>
+                        <p class="text-xs text-purple-300 mb-4 line-clamp-2">Oversized streetwear fits with LED accent threads. Perfect for styling reels.</p>
+                        
+                        <div class="mb-4">
+                            <div class="bg-cyber-dark p-2.5 rounded-xl border border-cyber-border flex justify-between items-center">
+                                <span class="text-xs text-gray-400">Influencer Payout / Click</span>
+                                <span class="text-sm font-bold text-emerald-400">₦289</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="openCampaignModal('Zenith Cyberpunk Oversized Hoodie', '₦289', 'https://placehold.co/600x400/140728/d946ef?text=Zenith+Hoodie+Ad')" class="w-full py-3 rounded-xl bg-purple-900 hover:bg-purple-800 text-white font-bold text-xs shadow transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Grab Link & Assets</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="tab-studio" class="space-y-6 hidden">
+            <div class="glass-panel p-6 rounded-3xl border border-cyber-border flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h3 class="text-xl font-bold text-white mb-1">⚡ Advertiser Command Center</h3>
+                    <p class="text-xs text-purple-300">Set your campaign budget and define how much you are willing to pay per click. Micro-influencers receive their credited share directly upon verified click delivery.</p>
+                </div>
+                <button onclick="openAdvertiserModal()" class="px-6 py-3 rounded-xl bg-cyber-accent text-white font-extrabold text-xs shadow hover:bg-pink-600 transition flex items-center space-x-2 shrink-0">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span>Launch New Ad Campaign</span>
+                </button>
+            </div>
+
+            <!-- Active Campaigns Table -->
+            <div class="glass-panel rounded-3xl p-6 border border-cyber-border overflow-hidden">
+                <h4 class="font-bold text-white mb-4 text-base">Your Active Brand Quests</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-cyber-border text-xs text-purple-300">
+                                <th class="pb-3 font-semibold">Campaign Name</th>
+                                <th class="pb-3 font-semibold">Verified Clicks</th>
+                                <th class="pb-3 font-semibold">Gross CPC Set</th>
+                                <th class="pb-3 font-semibold">Total Budget Funded</th>
+                                <th class="pb-3 font-semibold">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm divide-y divide-cyber-border">
+                            <tr class="hover:bg-cyber-dark transition">
+                                <td class="py-4 font-bold text-white flex items-center space-x-3">
+                                    <div class="w-8 h-8 rounded-lg bg-cyber-dark border border-cyber-border overflow-hidden">
+                                        <img src="https://placehold.co/50x50/140728/00f0ff?text=CS" class="w-full h-full object-cover">
+                                    </div>
+                                    <span>CyberStride Quantum</span>
+                                </td>
+                                <td class="py-4 text-cyber-neon font-semibold">14,280</td>
+                                <td class="py-4 text-emerald-400 font-bold">₦500 CPC</td>
+                                <td class="py-4 font-bold text-white">₦7,140,000</td>
+                                <td class="py-4"><span class="px-2.5 py-1 rounded-full text-[10px] bg-emerald-950 text-emerald-300 font-bold border border-emerald-500">Active 🟢</span></td>
+                            </tr>
+                            <tr class="hover:bg-cyber-dark transition">
+                                <td class="py-4 font-bold text-white flex items-center space-x-3">
+                                    <div class="w-8 h-8 rounded-lg bg-cyber-dark border border-cyber-border overflow-hidden">
+                                        <img src="https://placehold.co/50x50/140728/ff007f?text=AE" class="w-full h-full object-cover">
+                                    </div>
+                                    <span>Aura Blast Energy</span>
+                                </td>
+                                <td class="py-4 text-cyber-neon font-semibold">8,450</td>
+                                <td class="py-4 text-emerald-400 font-bold">₦250 CPC</td>
+                                <td class="py-4 font-bold text-white">₦2,112,500</td>
+                                <td class="py-4"><span class="px-2.5 py-1 rounded-full text-[10px] bg-emerald-950 text-emerald-300 font-bold border border-emerald-500">Active 🟢</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-vault" class="space-y-6 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-panel p-6 rounded-3xl border border-cyber-border">
+                    <span class="text-xs text-purple-300 block mb-1">Total Vault Balance</span>
+                    <h3 class="text-3xl font-extrabold text-yellow-400 mb-2">₦265,400</h3>
+                    <button onclick="showNotification('💸 Bank payout initiated to your connected Nigerian bank account (Opay / GTB / Access)!')" class="w-full py-2.5 rounded-xl bg-yellow-500 text-black font-extrabold text-xs shadow hover:bg-yellow-400 transition">
+                        Cash Out to Bank
+                    </button>
+                </div>
+                <div class="glass-panel p-6 rounded-3xl border border-cyber-border">
+                    <span class="text-xs text-purple-300 block mb-1">Total Valid Clicks Generated</span>
+                    <h3 class="text-3xl font-extrabold text-cyber-neon mb-2">1,894</h3>
+                    <p class="text-xs text-emerald-400">↑ 24% higher than last week</p>
+                </div>
+            </div>
+
+            <!-- Recent Earnings Log -->
+            <div class="glass-panel rounded-3xl p-6 border border-cyber-border">
+                <h4 class="font-bold text-white mb-4 text-base">Recent Click Loot Drops</h4>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3.5 rounded-2xl bg-cyber-dark border border-cyber-border">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-950 text-emerald-300 flex items-center justify-center font-bold border border-emerald-500">
+                                <i class="fa-solid fa-arrow-up-right-dots"></i>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-sm text-white">CyberStride Click Payout</h5>
+                                <span class="text-xs text-purple-300">14 verified clicks via TikTok Short</span>
+                            </div>
+                        </div>
+                        <span class="font-bold text-emerald-400">+₦5,950</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3.5 rounded-2xl bg-cyber-dark border border-cyber-border">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-cyan-950 text-cyber-neon flex items-center justify-center font-bold border border-cyan-500">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-sm text-white">Aura Blast Click Payout</h5>
+                                <span class="text-xs text-purple-300">8 verified clicks via WhatsApp Status</span>
+                            </div>
+                        </div>
+                        <span class="font-bold text-emerald-400">+₦1,696</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-guild" class="space-y-6 hidden">
+            <div class="glass-panel rounded-3xl p-6 border border-cyber-border">
+                <h3 class="text-xl font-bold text-white mb-1">👑 Top Nigerian Hype Guild Leaders</h3>
+                <p class="text-xs text-purple-300 mb-6">Micro-influencers earning the highest click bounties this week win the ₦4,000,000 seasonal jackpot.</p>
+                
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-cyber-dark border border-amber-500">
+                        <div class="flex items-center space-x-4">
+                            <span class="font-extrabold text-xl text-amber-400 w-6">#1</span>
+                            <img src="https://placehold.co/100x100/140728/yellow?text=🔥" class="w-12 h-12 rounded-full border-2 border-amber-400 object-cover">
+                            <div>
+                                <h4 class="font-bold text-white">ChiomaVibes (Lagos)</h4>
+                                <span class="text-xs text-amber-300">Level 42 • 8,940 Clicks</span>
+                            </div>
+                        </div>
+                        <span class="font-extrabold text-yellow-400 text-lg">₦3,820,000</span>
+                    </div>
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-cyber-dark border border-cyber-border">
+                        <div class="flex items-center space-x-4">
+                            <span class="font-extrabold text-xl text-gray-300 w-6">#2</span>
+                            <img src="https://placehold.co/100x100/140728/cyan?text=⚡" class="w-12 h-12 rounded-full border-2 border-cyber-neon object-cover">
+                            <div>
+                                <h4 class="font-bold text-white">Tunde "HypeLord" (You)</h4>
+                                <span class="text-xs text-cyber-neon">Level 14 • 1,894 Clicks</span>
+                            </div>
+                        </div>
+                        <span class="font-extrabold text-cyber-neon text-lg">₦265,400</span>
+                    </div>
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-cyber-dark border border-cyber-border">
+                        <div class="flex items-center space-x-4">
+                            <span class="font-extrabold text-xl text-pink-400 w-6">#3</span>
+                            <img src="https://placehold.co/100x100/140728/pink?text=💎" class="w-12 h-12 rounded-full border-2 border-pink-400 object-cover">
+                            <div>
+                                <h4 class="font-bold text-white">AbujaInfluencerDan</h4>
+                                <span class="text-xs text-pink-300">Level 28 • 2,410 Clicks</span>
+                            </div>
+                        </div>
+                        <span class="font-extrabold text-pink-400 text-lg">₦1,150,000</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-devdocs" class="space-y-6 hidden">
+            <div class="glass-panel rounded-3xl p-6 md:p-8 border border-cyber-border space-y-6">
+                <div class="border-b border-cyber-border pb-4">
+                    <div class="inline-flex items-center space-x-2 bg-cyber-dark border border-cyber-neon px-3 py-1 rounded-full text-xs font-bold text-cyber-neon mb-2">
+                        <i class="fa-solid fa-microchip"></i>
+                        <span>SYSTEM ARCHITECTURE SPECIFICATION</span>
+                    </div>
+                    <h3 class="text-2xl font-extrabold text-white">HypeQuest Developer & Technical Handbook</h3>
+                    <p class="text-xs text-purple-300">Internal engineering reference for web app mechanics, PWA offline configuration, and currency calculations.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-cyber-dark p-5 rounded-2xl border border-cyber-border space-y-3">
+                        <h4 class="font-bold text-white text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-coins text-yellow-400"></i>
+                            <span>1. Financial & CPC Split Algorithm</span>
+                        </h4>
+                        <p class="text-xs text-purple-200 leading-relaxed">
+                            When an advertiser funds a campaign with a Cost Per Click (CPC) value $C_{gross}$, the system splits the fund as follows:
+                        </p>
+                        <ul class="text-xs text-purple-300 space-y-1 list-disc pl-4 font-mono">
+                            <li>Platform Cut: 15% ($0.15 \times C_{gross}$)</li>
+                            <li>Influencer Vault Payout: 85% ($0.85 \times C_{gross}$)</li>
+                        </ul>
+                        <p class="text-xs text-purple-200">
+                            Verified clicks are recorded via edge server web-hooks preventing duplicate bot requests.
+                        </p>
+                    </div>
+
+                    <div class="bg-cyber-dark p-5 rounded-2xl border border-cyber-border space-y-3">
+                        <h4 class="font-bold text-white text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-shield-halved text-cyber-neon"></i>
+                            <span>2. Anti-Fraud & Click Tracking</span>
+                        </h4>
+                        <p class="text-xs text-purple-200 leading-relaxed">
+                            Referral links use standard UTM parameters (`?r=user_id&ad=campaign_slug`). The backend validates TLS fingerprints, browser headers, and session TTL before releasing payouts to the loot vault.
+                        </p>
+                    </div>
+
+                    <div class="bg-cyber-dark p-5 rounded-2xl border border-cyber-border space-y-3">
+                        <h4 class="font-bold text-white text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-mobile-screen text-pink-400"></i>
+                            <span>3. Progressive Web App (PWA) Setup</span>
+                        </h4>
+                        <p class="text-xs text-purple-200 leading-relaxed">
+                            Designed to be wrapped via Capacitor or Cordova for iOS/Android distribution, or installed directly through Chrome/Safari mobile browsers using a standard `manifest.json` and Service Worker registration.
+                        </p>
+                    </div>
+
+                    <div class="bg-cyber-dark p-5 rounded-2xl border border-cyber-border space-y-3">
+                        <h4 class="font-bold text-white text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-database text-emerald-400"></i>
+                            <span>4. Local State Management</span>
+                        </h4>
+                        <p class="text-xs text-purple-200 leading-relaxed">
+                            Client-side reactivity is managed via vanilla JavaScript DOM binding with localStorage persistence for simulated wallet credits, active quest tokens, and XP levels.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="campaign-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-lg rounded-3xl border border-cyber-neon p-6 relative">
+            <button onclick="closeCampaignModal()" class="absolute top-5 right-5 text-gray-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-cyber-dark border border-cyber-neon flex items-center justify-center text-cyber-neon text-xl font-bold">
+                    <i class="fa-solid fa-gift"></i>
+                </div>
+                <div>
+                    <h3 id="modal-title" class="text-xl font-extrabold text-white">CyberStride Quantum</h3>
+                    <p class="text-xs text-purple-300">Claim your unique referral link & downloadable ad assets</p>
+                </div>
+            </div>
+
+            <!-- Ad Assets Preview Box -->
+            <div class="mb-4 rounded-2xl overflow-hidden border border-cyber-border h-44 bg-cyber-dark relative">
+                <img id="modal-img" src="" alt="Ad Asset" class="w-full h-full object-cover">
+                <div class="absolute bottom-2 right-2 bg-cyber-dark border border-cyber-border px-3 py-1 rounded-lg text-xs text-white font-semibold flex items-center space-x-1">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Ready for Reels/TikTok</span>
+                </div>
+            </div>
+
+            <!-- Rates display -->
+            <div class="mb-5">
+                <div class="bg-cyber-dark p-3 rounded-2xl border border-cyber-border flex justify-between items-center">
+                    <span class="text-xs text-gray-400">Influencer Payout per Click (85% of CPC)</span>
+                    <span id="modal-click-rate" class="text-lg font-extrabold text-emerald-400">₦425</span>
+                </div>
+            </div>
+
+            <!-- Unique Referral Link Box -->
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-purple-300 mb-2">YOUR UNIQUE HYPE LINK:</label>
+                <div class="flex items-center bg-cyber-dark rounded-xl border border-cyber-border p-2">
+                    <input type="text" id="referral-link-input" readonly value="https://hypequest.ng/r/tunde_88x9?ad=cyberstride" class="bg-transparent flex-1 text-xs text-cyber-neon font-mono px-2 outline-none truncate">
+                    <button onclick="copyReferralLink()" class="px-4 py-2 rounded-lg bg-cyber-neon text-cyber-dark font-extrabold text-xs hover:bg-cyan-400 transition flex items-center space-x-1">
+                        <i class="fa-solid fa-copy"></i>
+                        <span>Copy</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="downloadAssetPackage()" class="flex-1 py-3 rounded-xl bg-purple-900 text-white font-bold text-xs shadow hover:bg-purple-800 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Download Media Kit (Zip)</span>
+                </button>
+                <button onclick="closeCampaignModal()" class="px-5 py-3 rounded-xl bg-cyber-dark border border-cyber-border text-white font-bold text-xs hover:bg-cyber-border transition">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="advertiser-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-xl rounded-3xl border border-cyber-accent p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeAdvertiserModal()" class="absolute top-5 right-5 text-gray-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center space-x-3 mb-6">
+                <div class="w-12 h-12 rounded-2xl bg-cyber-dark border border-cyber-accent flex items-center justify-center text-cyber-accent text-xl font-bold">
+                    <i class="fa-solid fa-bullhorn"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-extrabold text-white">Create New Ad Campaign</h3>
+                    <p class="text-xs text-purple-300">Set what you are willing to pay per click (CPC).</p>
+                </div>
+            </div>
+
+            <form onsubmit="handleAdvertiserSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-purple-300 mb-1">Campaign Title</label>
+                    <input type="text" required placeholder="e.g. Lagos Smartwatch 2.0" class="w-full bg-cyber-dark border border-cyber-border rounded-xl p-3 text-sm text-white focus:border-cyber-accent outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-purple-300 mb-1">Target Landing Page URL</label>
+                        <input type="url" required placeholder="https://yourbrand.ng/product" class="w-full bg-cyber-dark border border-cyber-border rounded-xl p-3 text-sm text-white focus:border-cyber-accent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-purple-300 mb-1">Gross Cost Per Click (CPC in ₦)</label>
+                        <input type="number" id="ad-cpc" oninput="calculateAdvertiserBudget()" required placeholder="500" class="w-full bg-cyber-dark border border-cyber-border rounded-xl p-3 text-sm text-white focus:border-cyber-accent outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-purple-300 mb-1">Estimated Target Clicks</label>
+                    <input type="number" id="ad-clicks" oninput="calculateAdvertiserBudget()" required placeholder="2000" class="w-full bg-cyber-dark border border-cyber-border rounded-xl p-3 text-sm text-white focus:border-cyber-accent outline-none">
+                </div>
+
+                <!-- Budget Breakdown Box -->
+                <div class="bg-cyber-dark p-4 rounded-2xl border border-cyber-border space-y-2">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-purple-300">Total Campaign Funding Required:</span>
+                        <span id="calc-total-budget" class="font-bold text-emerald-400">₦0</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-purple-300">Influencer Payout per Click (85%):</span>
+                        <span id="calc-influencer-cpc" class="font-bold text-cyber-neon">₦0</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-purple-300 mb-1">Upload Ad Asset URL (Image/Video)</label>
+                    <input type="text" placeholder="https://images.unsplash.com/..." class="w-full bg-cyber-dark border border-cyber-border rounded-xl p-3 text-sm text-white focus:border-cyber-accent outline-none">
+                </div>
+
+                <button type="submit" class="w-full py-4 rounded-xl bg-cyber-accent text-white font-extrabold text-sm shadow hover:bg-pink-600 transition mt-4">
+                    🚀 Launch Campaign to Nigerian Creators
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-20 md:bottom-8 right-4 bg-cyber-card border border-cyber-neon text-white px-5 py-3 rounded-2xl shadow-xl z-50 hidden transition-all duration-300 flex items-center space-x-3">
+        <i class="fa-solid fa-bell text-cyber-neon text-lg"></i>
+        <span id="toast-text" class="text-xs font-semibold">Notification message here</span>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            const tabs = ['quests', 'studio', 'vault', 'guild', 'devdocs'];
+            tabs.forEach(t => {
+                const el = document.getElementById('tab-' + t);
+                if (el) el.classList.add('hidden');
+                
+                // Desktop nav
+                const navEl = document.getElementById('nav-' + t);
+                if (navEl) {
+                    navEl.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm text-purple-300 hover:bg-cyber-border hover:text-white transition-all duration-200";
+                }
+                // Mobile nav
+                const mobEl = document.getElementById('nm-' + t);
+                if (mobEl) {
+                    mobEl.className = "flex flex-col items-center text-purple-300";
+                }
+            });
+
+            // Show selected tab
+            const activeEl = document.getElementById('tab-' + tabId);
+            if (activeEl) activeEl.classList.remove('hidden');
+
+            const activeNav = document.getElementById('nav-' + tabId);
+            if (activeNav) {
+                activeNav.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm bg-cyber-border text-cyber-neon shadow-md";
+            }
+
+            const activeMob = document.getElementById('nm-' + tabId);
+            if (activeMob) {
+                activeMob.className = "flex flex-col items-center text-cyber-neon";
+            }
+
+            // Update header title
+            const titles = {
+                quests: "⚡ Active Hype Quests",
+                studio: "👑 Advertiser Command Center",
+                vault: "💎 Loot Vault & Analytics",
+                guild: "🏆 Guild Leaderboard Rankings",
+                devdocs: "💻 Developer Architecture & Tech Specs"
+            };
+            const titleEl = document.getElementById('page-title');
+            if (titleEl) titleEl.innerText = titles[tabId];
+        }
+
+        function openCampaignModal(title, clickRate, imgSrc) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-click-rate').innerText = clickRate;
+            document.getElementById('modal-img').src = imgSrc;
+            document.getElementById('referral-link-input').value = `https://hypequest.ng/r/tunde_88x9?ad=` + encodeURIComponent(title.toLowerCase().replace(/\s+/g, '_'));
+            document.getElementById('campaign-modal').classList.remove('hidden');
+        }
+
+        function closeCampaignModal() {
+            document.getElementById('campaign-modal').classList.add('hidden');
+        }
+
+        function openAdvertiserModal() {
+            document.getElementById('advertiser-modal').classList.remove('hidden');
+        }
+
+        function closeAdvertiserModal() {
+            document.getElementById('advertiser-modal').classList.add('hidden');
+        }
+
+        function calculateAdvertiserBudget() {
+            const cpc = parseFloat(document.getElementById('ad-cpc').value) || 0;
+            const clicks = parseFloat(document.getElementById('ad-clicks').value) || 0;
+            const totalBudget = cpc * clicks;
+            const influencerShare = cpc * 0.85;
+            document.getElementById('calc-total-budget').innerText = '₦' + totalBudget.toLocaleString();
+            document.getElementById('calc-influencer-cpc').innerText = '₦' + influencerShare.toFixed(1);
+        }
+
+        function copyReferralLink() {
+            const input = document.getElementById('referral-link-input');
+            input.select();
+            document.execCommand('copy');
+            showNotification('📋 Unique referral link copied to clipboard!');
+        }
+
+        function downloadAssetPackage() {
+            showNotification('📦 Downloading high-res ad creatives & caption pack zip!');
+        }
+
+        function previewAssets(campaign) {
+            showNotification(`👀 Loading media creative pack for ${campaign}...`);
+        }
+
+        function handleAdvertiserSubmit(e) {
+            e.preventDefault();
+            closeAdvertiserModal();
+            showNotification('🚀 Campaign successfully deployed! Ready for micro-influencer pickups.');
+        }
+
+        function showNotification(msg) {
+            const toast = document.getElementById('toast');
+            const text = document.getElementById('toast-text');
+            text.innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
