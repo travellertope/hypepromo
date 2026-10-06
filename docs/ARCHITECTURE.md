@@ -1,13 +1,14 @@
 # Promoet — System Plan & Architecture
 
-> Status: **Planning draft v1** (2026-10-06)
+> Status: **Planning draft v2** (2026-10-06): owner decisions applied (see §16)
 > Source: the single-file prototype in [`prototype/index.html`](../prototype/index.html) (built under the working name "HypeQuest")
 
 Promoet is a two-sided marketplace for Nigeria. **Advertisers** fund
-pay-per-click (CPC) campaigns. **Micro-influencers ("creators")** pick up
-campaigns as *quests*, post the ad assets on TikTok / IG / X / WhatsApp Status
-with a unique tracking link, and earn **85% of the CPC for every verified
-click**. The platform keeps 15%. Game mechanics (XP, levels, energy,
+campaigns that pay **per verified click (CPC)** or **per conversion (CPA)**.
+**Micro-influencers ("creators")** pick up campaigns as *quests*, post the ad
+assets on TikTok / IG / X / WhatsApp Status with a unique tracking link or
+promo code, and earn **85% of every billed click or conversion**. The
+platform keeps 15% of the advertiser's budget. Game mechanics (XP, levels, energy,
 leaderboards, guilds) drive engagement **and** double as the trust system.
 
 ---
@@ -106,20 +107,22 @@ flowchart TB
 | Monorepo | pnpm + Turborepo | `apps/*` and `packages/*` (§13) |
 | Web | **Next.js (App Router)** + Tailwind + **Serwist** (PWA) | SSR for the advertiser/marketing pages, installable PWA for creators |
 | API | **Fastify** + Zod + **Drizzle ORM** | Fast, explicit SQL control for ledger transactions |
-| DB | **PostgreSQL 16** (Supabase or Neon managed; Supabase is already connected to this workspace) | ACID ledger, partitioning for clicks, row locks for budgets |
+| DB + Auth | **Supabase** (decided): Postgres, Auth (phone OTP), Storage. New project `promoet` in **eu-west-2 (London)** | ACID ledger, partitioning for clicks, row locks for budgets. Supabase has no African region; London has the best routes from Lagos |
 | Cache/queues | **Redis** (Upstash or managed) + **BullMQ** | Jobs, rate limits, sorted-set leaderboards |
 | Redirect | **Cloudflare Workers** + KV + Queues | Under 50 ms redirects near Lagos, bot score / ASN / TLS fingerprint signals at the edge, absorbs viral spikes |
-| Storage | Cloudflare R2 (S3 API) | No egress fees for creatives that get downloaded a lot |
+| Storage | Supabase Storage for creatives (with its CDN). Move hot media to Cloudflare R2 if egress costs grow | One less vendor at launch |
 | Payments | **Paystack** (primary), Flutterwave (fallback) | NGN card / transfer / USSD collection, NUBAN resolve, bulk transfers |
 | KYC | Smile ID / Dojah / Prembly | BVN/NIN check and selfie liveness |
 | Messaging | Termii (SMS + WhatsApp OTP), Resend (email), Web Push (VAPID) | Termii has good Nigerian delivery |
 | Observability | OpenTelemetry → Grafana/Sentry, structured logs | Trace a click from the edge through scoring to the ledger |
 | Infra-as-code | Terraform (Cloudflare, DB, Redis), GitHub Actions CI | Repeatable environments |
 
-**Supabase alternative:** using Supabase for Auth, Postgres and Storage is a
-reasonable way to start faster. Even then, **every money path (ledger, budget,
-payouts) must go through the server-side API.** Do not use client SDK writes
-with RLS for these.
+**How Supabase is used:**
+
+- **Auth:** Supabase Auth with phone OTP. Termii is plugged in through Supabase's *Send SMS* auth hook if it isn't offered as a built-in provider. The API verifies Supabase JWTs.
+- **Database:** the Fastify API and workers connect with a server-only role through the Supavisor pooler. Migrations are managed with Drizzle and the Supabase CLI.
+- **RLS:** enabled on **every** table with deny-by-default. The browser may read a few harmless views directly (for example the public quest feed), but **every money path (ledger, budget, payouts, conversions) goes through the server-side API only.** No client SDK writes to those tables.
+- **Branches:** Supabase branching for preview and staging databases.
 
 ---
 
@@ -134,7 +137,7 @@ Modules do not reach into each other's tables.
 | `creator` | Creator profile, linked social accounts, niches, state/city, tier, KYC status, bank accounts |
 | `campaigns` | Campaign CRUD, targeting, creatives, moderation state, budget and caps, lifecycle state machine |
 | `quests` | Quest claims, referral links (short codes), post-proof submissions, eligibility checks |
-| `tracking` | Click ingestion consumer, fraud rules engine, verdicts, conversion pixel |
+| `tracking` | Click ingestion consumer, fraud rules engine, verdicts, conversion postbacks / pixel / promo codes, channel quality scores |
 | `ledger` | Double-entry accounts and journal, balance queries, holds and releases, reversals |
 | `payments` | Paystack collections (advertiser funding), webhooks, transfers (creator payouts), reconciliation |
 | `game` | XP, levels, energy, streaks, badges, seasons, leaderboards, guilds |
@@ -187,7 +190,7 @@ sequenceDiagram
 ```
 
 - The worker **never blocks on the database.** It enqueues and redirects. If KV has no entry, it falls back to an API lookup. Paused or exhausted campaigns still redirect (so the visitor isn't left on a dead link) but are recorded as `not_billable`.
-- `pm_click` is appended so advertisers can report conversions later (Phase 2).
+- `pm_click` is appended so advertisers can report conversions (§5.7).
 - Click IDs are ULIDs: sortable and unique, and they double as idempotency keys.
 
 ### 5.3 Fraud rules (rules engine v1)
@@ -197,6 +200,7 @@ Each rule adds to a risk score or forces a verdict. The output is
 
 | # | Signal | Rule |
 |---|---|---|
+| 0 | **Link-preview crawlers** (`WhatsApp/…`, `facebookexternalhit`, `Twitterbot`, `TelegramBot`, …) fetch the link when it is pasted | Serve Open Graph preview tags; **never** recorded as a click |
 | 1 | Edge bot score / known bot UA / headless markers | Invalid |
 | 2 | ASN is a datacenter, VPN or hosting provider | Invalid (high risk) |
 | 3 | Geo outside campaign targeting (default: NG) | `not_billable` |
@@ -237,6 +241,36 @@ over 500 billable clicks per second on one campaign), switch to Redis
 
 ### 5.5 Hold, release and clawback
 
+**What the hold period is, in plain terms:** when a click is counted, the
+creator sees the money straight away as **pending**. It becomes
+**withdrawable** only after a waiting period. Fraud often shows up only in
+hindsight: a burst of clicks from the same few phones, a creator who joined
+a "click-for-click" WhatsApp group, a pattern that shows up after several days
+of data. Once money has gone to a bank account it is practically impossible to
+recover. The hold gives the system time to catch these cases and refund the
+advertiser **before** anything leaves the platform.
+
+Example (7-day hold):
+
+| Day | What happens |
+|---|---|
+| Mon 6 Oct | Ada's link gets 120 valid clicks at ₦100 CPC → ₦10,200 shows as *pending* (85%) |
+| Tue–Sun | Nightly re-scoring finds 20 clicks from a click farm → ₦1,700 reversed, ₦2,000 back to the advertiser's campaign |
+| Mon 13 Oct | ₦8,500 moves to *available*; Ada can withdraw |
+
+Recommended hold periods at launch (configurable):
+
+| Situation | Hold |
+|---|---|
+| New creators (levels 1–4) | **7 days** |
+| Levels 5–9 with a clean record | 5 days |
+| Level 10+ with a clean record for 90 days | 3 days |
+| Any link currently under `review` | Frozen until reviewed |
+| WhatsApp-channel earnings, first 30 days of a creator account | 7 days regardless of level |
+| CPA conversions | Advertiser approval window (§5.7), then 3 days |
+
+The rules:
+
 - Earnings land in the creator's **pending** balance. After **N days** (default 7, shorter at higher levels), a settlement job moves them to **available**.
 - If fraud is confirmed during the hold, the click is reversed: creator pending −, platform fee −, campaign escrow +. The advertiser only pays for clicks that survive the hold.
 - After release, earnings are final for the creator. Fraud found later is handled through account action and future earnings, not negative balances.
@@ -244,10 +278,103 @@ over 500 billable clicks per second on one campaign), switch to Redis
 ### 5.6 Withdrawal
 
 1. Creator adds a bank account. The API calls Paystack **Resolve Account Number** and requires the account name to fuzzy-match the KYC name.
-2. `POST /payouts`: checks minimum (for example ₦2,000), available balance, daily limit by KYC tier, and the account's cooling-off period after a bank change (24–72 h).
-3. Ledger: available → `payouts_in_transit`. A job sends a Paystack **Transfer** with the payout ID as the idempotency reference.
+2. `POST /payouts`: checks the minimum (₦1,000, §7.1), available balance, daily limit by KYC tier, and the account's cooling-off period after a bank change (24–72 h). The screen shows the Paystack transfer fee that will be deducted and the exact amount that will arrive.
+3. Ledger: available → `payouts_in_transit` for the full amount requested. A job sends a Paystack **Transfer** for *amount − transfer fee*, using the payout ID as the idempotency reference. Paystack takes the fee from the balance, so the full requested amount leaves `psp_clearing`.
 4. Webhook `transfer.success` → in_transit → cleared. `transfer.failed/reversed` → money goes back to available, and the creator is notified.
 5. MVP: an admin approves payouts manually. Later: automatic approval below a risk threshold.
+
+
+### 5.7 Pay per conversion (CPA), available at launch
+
+A campaign is billed **either** per click **or** per conversion
+(`billing_model = cpc | cpa`). With CPA, clicks are still tracked and scored,
+but they cost nothing. The advertiser pays only when a conversion is reported
+and approved. Advertisers trust this model more, and it is much harder to fake.
+
+**Conversion types:** `signup/lead` (fixed payout), `purchase` (a fixed payout
+or a % of order value), `app_install` (later, through an attribution provider
+such as AppsFlyer or Adjust).
+
+**How conversions are reported** (the advertiser chooses one or more in the
+campaign wizard):
+
+| Method | How it works | Best for |
+|---|---|---|
+| **Server-to-server postback** (recommended) | The advertiser's backend calls `POST /v1/conversions {click_id, event, order_id, value}` with an org API key | Anyone with a developer |
+| **JS pixel** | A small `promoet.js` script on the landing page saves `pm_click` in a first-party cookie. The thank-you page fires `promoet('conversion', {...})` | Simple websites, landing builders |
+| **Creator promo codes** | Each claim also gets a unique code (`ADA-CYBER10`). The advertiser uploads redeemed codes (CSV) or reports them by API | **WhatsApp, DMs, offline shops, Instagram vendors.** No link needed |
+| **Integrations** (later) | Shopify / WooCommerce plugins; app attribution providers | E-commerce, apps |
+
+**Rules:**
+
+- **Attribution:** last valid click wins, within a 7-day window by default (the advertiser can set 1–30 days). A promo-code redemption always wins over a link click.
+- **Dedupe:** each `(campaign, order_id)` is counted once, and each visitor once per campaign for lead campaigns.
+- **Approval window:** conversions arrive as *pending approval*. The advertiser can reject one with a reason (refund, fake signup) within **14 days**. After that it is **auto-approved**. This is shown to creators as part of the hold.
+- **Guarding against advertisers who under-report or reject unfairly:** track each advertiser's rejection rate and click → conversion rate. If it looks wrong, ops reviews it. Advertisers with high rejection rates lose access to top creators. Creators can see each campaign's approval rate before claiming.
+- **Conversion fraud signals:** a conversion within seconds of the click, many conversions from one device, the same visitor converting through several creators, and email or phone patterns shared by many leads.
+- **Billing:** the same budget-reservation transaction as for clicks, using `unit_price_kobo`. The 85/15 split applies.
+
+### 5.8 Can pay-per-impression (CPM) work here?
+
+**Not reliably with links alone, but yes for verified views on connected
+accounts. Plan it for Phase 2.**
+
+The difficulty is that **impressions happen inside TikTok, Instagram, X and
+WhatsApp, not on Promoet.** Promoet only sees someone who *clicked*. Nobody
+can count who merely *saw* the post except the platform itself. So the options
+are:
+
+| Option | Verdict |
+|---|---|
+| Creator uploads a screenshot of view counts | ❌ Easy to fake, impossible to audit at scale |
+| Count loads of our link-preview image | ❌ Counts crawlers and caches, not people |
+| **Read view counts from the platform's official API** after the creator connects their account (OAuth): Instagram Graph API insights (Business/Creator accounts), TikTok Display API (`view_count` on the creator's videos), YouTube Data API. X only through paid API tiers | ✅ Works. The creator links the specific post URL, and Promoet polls the view count for N days (e.g. 7) and bills per 1,000 new views |
+| WhatsApp Status views | ❌ There is no API for personal Status views. WhatsApp **Channels** show follower counts but no reliable per-post view API |
+
+Even views from the API can be inflated with cheap bought views. So
+"Verified Views" campaigns need safeguards:
+
+- Only creators with connected and verified accounts, at level 5+, with an established audience.
+- Views/followers and engagement/views ratios checked against the creator's own history. Sudden spikes go to review.
+- A cap per post (for example at most 3× the creator's median views are billable).
+- Billed for views gained during the first 7 days after posting only.
+- A hybrid option (a smaller CPM plus CPC) so advertisers still get traffic.
+
+Prerequisites, which have long lead times: Meta app review and the TikTok
+developer app audit. Start these applications in Phase 1 so they are approved
+in time for Phase 2.
+
+### 5.9 WhatsApp Status as a channel
+
+WhatsApp Status is Nigeria's largest "feed", so Promoet should support it. The
+key point is that **for CPC and CPA campaigns, nothing needs to be verified
+about the post itself.** Promoet pays for clicks and conversions that come
+through the link or code, wherever they were shared. What WhatsApp makes
+harder is **fraud**: links pasted into big "click for click" groups, or sent
+to friends who click out of politeness. The design:
+
+1. **A separate link per channel.** When claiming a quest, the creator picks channels and gets a separate code for each (`/r/Xk29PqLm` for TikTok, `/r/Wa7Hq2Zs` for WhatsApp). Stats, caps and risk are tracked per channel.
+2. **Share-ready kit.** A 9:16 Status image or video with the caption, link and `#ad` already composed. A one-tap "Share to WhatsApp" button (`https://wa.me/?text=…` on the web, the share sheet in the PWA). Open Graph tags on the link make the preview look good.
+3. **Engaged clicks only.** For WhatsApp links, a click is billable only if the landing-page beacon confirms the page loaded and stayed open for ≥ 3 seconds, or a conversion follows. This requires the advertiser's one-line script, so campaigns without it can only be CPA on WhatsApp.
+4. **Stricter limits:** lower per-creator daily caps on the WhatsApp channel until the creator builds a track record. The 7-day hold for the first 30 days. Rules 4–6 in §5.3 apply per channel.
+5. **Channel quality score.** For each creator and channel, compare downstream quality (dwell rate, conversion rate, reversal rate) with the campaign average. Low-quality channels get throttled. High-quality WhatsApp sharers unlock higher caps and premium campaigns.
+6. **Advertiser control.** Campaigns opt in to channels. WhatsApp is on by default for CPA and off by default for CPC.
+7. **Promo codes** (§5.7) are the most reliable way for WhatsApp sharers to earn, especially for vendors and service businesses.
+8. **Optional post-proof:** a screenshot of the Status with the "seen by N" count earns a small amount of XP only, never money, because screenshots can be faked.
+9. **WhatsApp Channels** (public broadcast channels) are treated like a social account: the creator verifies ownership by posting a code, and the follower count counts toward their tier.
+
+### 5.10 Self-serve advertisers from day one
+
+Anyone can sign up as an advertiser, fund an account and launch a campaign
+without talking to Promoet. That means the safeguards have to be automated:
+
+| Risk | Safeguard |
+|---|---|
+| Scams, loan apps, Ponzi schemes, adult content | Prohibited-category policy shown in the wizard. Automatic checks: image and text moderation, landing URL against Safe Browsing, domain age, keyword rules. **Every campaign gets human review before going live**, with a target SLA of under 4 business hours. Edits to live campaigns go back to review |
+| Stolen cards and chargebacks (card disputes can arrive months later) | **Verification tiers.** *Unverified*: card top-ups up to ₦200,000 in total. *Verified business* (CAC lookup by RC/BN number through the KYC provider, plus a director's BVN): no cap. Encourage **bank transfer** funding through Paystack dedicated virtual accounts, which can't be charged back |
+| Advertisers gaming creators (rejecting genuine CPA conversions) | Approval-rate monitoring (§5.7) |
+| Regulatory (ARCON) | The advertiser attests in the wizard. An ARCON reference field is required for regulated categories (finance, alcohol, health) |
+| Support load | Clear wizard with budget calculator, help centre, and in-app chat (for example Crisp or Intercom) |
 
 ---
 
@@ -294,13 +421,13 @@ free-floating `balance` column that code can change directly.
 
 | Event | Debit | Credit |
 |---|---|---|
-| Advertiser funds ₦1,000,000 (Paystack `charge.success`) | `psp_clearing` | `advertiser_wallet` |
+| Advertiser funds ₦1,000,000 net (pays ₦1,002,000 incl. Paystack fee; `charge.success`) | `psp_clearing` ₦1,000,000 | `advertiser_wallet` ₦1,000,000 |
 | Campaign launched with ₦500,000 budget | `advertiser_wallet` | `campaign_escrow` |
-| Valid click, CPC ₦500 | `campaign_escrow` 50,000k | `creator_pending` 42,500k · `platform_revenue` 7,500k |
+| Valid click, CPC ₦500 (or approved conversion at ₦500) | `campaign_escrow` 50,000k | `creator_pending` 42,500k · `platform_revenue` 7,500k |
 | Hold released | `creator_pending` | `creator_available` |
 | Click reversed (fraud) | `creator_pending` · `platform_revenue` | `campaign_escrow` |
-| Creator withdraws | `creator_available` | `payouts_in_transit` |
-| Transfer succeeds | `payouts_in_transit` | `psp_clearing` |
+| Creator withdraws ₦20,000 (₦25 fee → ₦19,975 arrives) | `creator_available` ₦20,000 | `payouts_in_transit` ₦20,000 |
+| Transfer succeeds (Paystack debits ₦19,975 + ₦25 fee) | `payouts_in_transit` ₦20,000 | `psp_clearing` ₦20,000 |
 | Campaign closed with unspent budget | `campaign_escrow` | `advertiser_wallet` |
 | Advertiser withdraws or refunds | `advertiser_wallet` | `psp_clearing` |
 
@@ -309,15 +436,44 @@ free-floating `balance` column that code can change directly.
 percentages are stored per campaign so changing the fee never rewrites
 history.
 
-**Pricing note to decide:** the prototype charges "budget = CPC × clicks". You
-still need to decide whether **VAT (7.5%)** on the platform's fee and the
-**payment processor fees** are added on top when the advertiser funds, or
-absorbed by the platform. Recommendation: show advertisers a funding total of
-budget + processor fee + VAT on the platform portion, and itemise it on the
-invoice.
-
 **Reconciliation:** a daily job compares the ledger's `psp_clearing` with the
 Paystack balance and settlement reports, and alerts on any difference.
+
+### 7.1 Fees, charges and minimums (decided)
+
+**Platform fee:** 15% is taken **out of** the advertiser's budget. With a
+₦100,000 budget at ₦100 CPC the advertiser buys 1,000 clicks, creators
+receive ₦85,000 and Promoet keeps ₦15,000. Nothing is added on top.
+
+**Paystack charges, paid by whoever moves the money:**
+
+| Movement | Who pays | How it's applied |
+|---|---|---|
+| Advertiser adds funds | **Advertiser** | Grossed up at checkout: to put ₦B in the wallet the advertiser pays `A` so that `A − fee(A) = B`. At Paystack's published local rate (1.5% + ₦100, capped at ₦2,000): ₦50,000 → pay ₦50,863; ₦200,000 or more → pay B + ₦2,000. The fee schedule is stored in config, not hard-coded |
+| Creator withdraws | **Creator** | Transfer fee deducted from the amount: ₦10 (≤ ₦5,000), ₦25 (₦5,001–₦50,000), ₦50 (> ₦50,000), plus any levy Paystack passes on. The exact amount that will arrive is shown before the creator confirms |
+
+These fee figures come from current published pricing and should be checked
+against the Paystack dashboard before launch.
+
+**VAT (still to confirm with an accountant):** because nothing is added on
+top, VAT on Promoet's service has to come out of the 15%. If VAT applies only
+to the platform fee (Promoet acting as an agent), 15% is VAT-inclusive:
+about 13.95% net revenue and about 1.05% VAT remitted. If the tax authority
+treats Promoet as selling the whole advertising service (principal), VAT
+could apply to the full spend. That is a large difference, so get it settled
+before launch. The ledger already has `vat_payable`.
+
+**Recommended minimums** (all configurable in admin):
+
+| Setting | Value | Reasoning |
+|---|---|---|
+| Minimum CPC | **₦50** (creator gets ₦42.50) | Below this, creators won't bother posting. The wizard *suggests* ₦100–₦150 and shows a "competitiveness" meter based on live campaigns |
+| Minimum CPA payout | **₦300** per lead/signup, **₦500** or 5% per purchase | Conversions take much more effort than a click |
+| Minimum campaign budget | **₦25,000** for CPC (≥ 500 clicks at the minimum CPC), **₦50,000** for CPA | Enough to spread across 10+ creators and produce meaningful data. Low enough for small Instagram vendors |
+| Minimum wallet top-up | **₦10,000** | Keeps Paystack's fixed ₦100 fee below 1% |
+| Max share of a budget per creator | **10%** by default (the advertiser can set 2–25%) | One creator (or one fraudster) can't drain a campaign |
+| Minimum withdrawal | **₦1,000** | The ₦10 fee is 1%, which is acceptable. Lower values would mostly create support load |
+| Daily withdrawal limit | ₦50,000 without KYC verification of a selfie, ₦500,000 after full KYC, raised by level | Limits damage from account takeover |
 
 ---
 
@@ -348,12 +504,15 @@ erDiagram
 | `users` | id, phone (unique), email, password_hash/null, role_flags, status, created_at |
 | `creator_profiles` | user_id, handle, display_name, avatar_url, state, niches[], tier, level, xp, energy, energy_updated_at, kyc_status, kyc_name, risk_score |
 | `social_accounts` | id, creator_id, platform (tiktok/ig/x/whatsapp/youtube), handle, followers, verified_at, verification_method |
-| `organizations` | id, name, rc_number (CAC), billing_email, status |
+| `organizations` | id, name, rc_number (CAC), billing_email, verification_tier (unverified/verified), card_funding_cap_kobo, cpa_approval_rate, api_key_hash, status |
 | `org_members` | org_id, user_id, role (owner/admin/analyst) |
-| `campaigns` | id, org_id, title, slug, description, category, landing_url, cpc_kobo, creator_share_bps (8500), budget_kobo, spent_kobo, daily_cap_kobo, per_creator_daily_click_cap, targeting (jsonb: states, niches, min_level, platforms), starts_at, ends_at, status, arcon_ref, moderation_notes |
+| `campaigns` | id, org_id, title, slug, description, category, landing_url, billing_model (cpc/cpa/cpm_views), unit_price_kobo, conversion_event, attribution_window_days, approval_window_days, allowed_channels[], requires_beacon, creator_share_bps (8500), max_creator_share_bps, budget_kobo, spent_kobo, daily_cap_kobo, per_creator_daily_click_cap, targeting (jsonb: states, niches, min_level, platforms), starts_at, ends_at, status, arcon_ref, moderation_notes |
 | `creatives` | id, campaign_id, type (image/video/caption), storage_key, width, height, duration, status |
 | `quest_claims` | id, campaign_id, creator_id, energy_spent, claimed_at, post_proof_url, proof_status — unique(campaign_id, creator_id) |
-| `referral_links` | id, claim_id, code (unique), status (active/throttled/disabled) |
+| `referral_links` | id, claim_id, channel (tiktok/ig/x/whatsapp/other), code (unique), status (active/throttled/disabled), quality_score |
+| `promo_codes` | id, claim_id, code (unique per campaign), redeemed_count |
+| `conversions` | id, campaign_id, click_id/null, promo_code_id/null, creator_id, event, order_id, value_kobo, source (postback/pixel/code_upload), status (pending_approval/approved/rejected/invalid), reject_reason, approve_by, journal_entry_id — unique(campaign_id, order_id) |
+| `beacons` | click_id, loaded_at, dwell_ms |
 | `clicks` | id (ULID), link_id, campaign_id, creator_id, ts, ip_hash, asn, country, ua_hash, fp_hash, visitor_id, referrer_host, edge_bot_score — **partitioned by month** |
 | `click_verdicts` | click_id, verdict, reasons[], ruleset_version, billed_kobo, journal_entry_id, released_at, reversed_at |
 | `ledger_accounts` | id, type, owner_type, owner_id, currency, cached_balance_kobo |
@@ -362,6 +521,7 @@ erDiagram
 | `payments` | id, org_id, provider, reference (unique), amount_kobo, status, raw_webhook |
 | `bank_accounts` | id, creator_id, bank_code, account_number_enc, account_name, recipient_code, verified_at |
 | `payouts` | id, creator_id, bank_account_id, amount_kobo, status, provider_ref, approved_by, failure_reason |
+| `post_tracking` (Phase 2) | id, claim_id, platform, post_url, external_post_id, views_baseline, views_latest, billed_views, last_polled_at |
 | `xp_events` | id, creator_id, kind, amount, ref_id, created_at |
 | `seasons`, `season_standings`, `badges`, `creator_badges`, `guilds`, `guild_members` | game tables |
 | `notifications` | id, user_id, kind, payload, read_at |
@@ -406,6 +566,12 @@ Advertiser (scoped to org)
   GET  /orgs/:orgId/campaigns/:id/analytics?granularity=hour|day
   POST /orgs/:orgId/wallet/fund              → Paystack checkout URL
   GET  /orgs/:orgId/wallet  /invoices
+  POST /orgs/:orgId/campaigns/:id/promo-codes/redemptions   (CSV upload)
+  GET  /orgs/:orgId/conversions?status=pending_approval     POST .../:id/approve|reject
+  POST /orgs/:orgId/api-keys
+
+Conversions (advertiser servers, API-key auth)
+  POST /v1/conversions          {click_id | promo_code, event, order_id, value}
 
 Admin
   GET  /admin/review/campaigns  POST .../:id/approve|reject
@@ -418,7 +584,7 @@ Admin
 Webhooks / edge
   POST /webhooks/paystack        (HMAC-SHA512 signature check, idempotent on event id)
   GET  /r/:code                  (Cloudflare Worker, not the API)
-  GET  /px.gif?c=click_id&e=view|lead|purchase   (conversion pixel, Phase 2)
+  GET  /px.gif?c=click_id&e=view|lead|purchase   (pixel + engagement beacon from promoet.js)
 ```
 
 Rules: cursor pagination, an `Idempotency-Key` header on every POST that
@@ -524,30 +690,33 @@ person.
 - Auth (phone OTP), users, roles, organisations
 - Ledger module and its property tests (built **first**, because everything depends on it)
 
-### Phase 1 — Closed-beta MVP (weeks 3–10)
+### Phase 1 — MVP with self-serve (weeks 3–12)
 - Creator onboarding: profile, social handles (verified by putting a code in the bio), niches, state
-- Campaigns created by advertisers or by admins for launch partners, creative upload, moderation
-- Advertiser funding through Paystack, plus a bank-transfer option for large budgets
-- Quest feed, claim, referral link, caption + `#ad` template, single-image download
-- Redirect worker, click queue, rules engine v1, budget reservation, 7-day hold
+- **Self-serve advertiser sign-up**, verification tiers, campaign wizard (CPC or CPA), creative upload, automated checks plus human review (§5.10)
+- Advertiser funding through Paystack with the fee grossed up, plus dedicated virtual accounts for bank transfers
+- Quest feed, claim, **per-channel links including WhatsApp**, caption + `#ad` template, Status-ready share kit
+- Redirect worker, click queue, rules engine v1, link-preview crawler filter, budget reservation, level-based hold
+- **CPA:** S2S postback, `promoet.js` pixel + engagement beacon, creator promo codes, approval window
+- Submit Meta and TikTok developer app reviews (needed for Verified Views in Phase 2)
 - Creator wallet (pending/available), earnings feed, bank account + KYC, **manually approved** withdrawals
 - Basic XP, levels, energy
 - Advertiser dashboard: clicks, valid %, spend, by creator and by day
 - Admin: review queues, fraud queue, payouts, audit log
-- **Beta:** 3–5 advertisers, 200–500 hand-picked creators in Lagos and Abuja
+- **Launch:** advertisers are open from day one. Creators are let in from a waitlist in batches (Lagos and Abuja first) so the supply of creators doesn't outgrow the advertiser budget available
 
-### Phase 2 — Public launch (weeks 11–18)
-- Self-serve advertiser onboarding with CAC/RC verification
-- Targeting (state, niche, level, platform), daily caps, scheduling
-- Conversion pixel and CPA/CPL campaign option, using `pm_click` attribution
+### Phase 2 — Scale (weeks 13–20)
+- **Verified Views (CPM)** for connected Instagram, TikTok and YouTube accounts (§5.8)
+- OAuth social verification and follower sync
+- Advanced targeting (state, niche, level, platform), daily caps, scheduling
+- Channel quality scores, Shopify/WooCommerce plugins
 - Automatic payouts below a risk threshold, retries, reconciliation dashboard
 - Seasons, leaderboards (global/state/niche), badges, streaks
 - Web push, WhatsApp notifications, media-kit zips, post-proof review
 - Risk-based Turnstile interstitial, velocity anomaly detection
 
-### Phase 3 — Growth (after week 18)
+### Phase 3 — Growth (after week 20)
 - Guilds and guild quests
-- OAuth social verification and follower sync where platform APIs allow it
+- App-install CPA through attribution providers
 - Capacitor wrappers for the Play Store (and iOS if needed)
 - ML fraud scoring trained on labelled verdicts, ClickHouse analytics
 - Agency accounts (multi-brand), API access for advertisers
@@ -558,20 +727,27 @@ person.
 ## 15. Key metrics
 
 - **Marketplace:** GMV (campaign spend), take rate, creator payouts, number of live campaigns, budget usage
-- **Quality:** valid-click rate, reversal rate, advertiser repeat-funding rate, cost per conversion (Phase 2)
+- **Quality:** valid-click rate, reversal rate, advertiser repeat-funding rate, cost per conversion, CPA approval rate per advertiser, quality score per channel
 - **Creators:** activation (first valid click within 7 days), D7/D30 retention, median monthly earnings, withdrawal success rate
 - **Ops:** payout turnaround time, size of the fraud queue, reconciliation differences (target ₦0)
 
 ---
 
-## 16. Open decisions for the owner
+## 16. Decisions log
 
-1. **Pricing model:** pure CPC only, or also CPA/CPL in Phase 2? (Advertisers trust CPA more, and it is much harder to game.)
-2. **Fee and charges:** is the 15% inclusive of VAT? Who pays processor fees on funding and on payouts?
-3. **Minimum CPC** and the minimum campaign budget (suggestion: ₦50 CPC, ₦50,000 budget).
-4. **Hold period** at launch (suggestion: 7 days, shrinking to 2 days at high levels).
-5. **Creator eligibility:** minimum follower count, or open to anyone with a WhatsApp Status? (WhatsApp Status is huge in Nigeria but cannot be verified, so it has higher fraud risk.)
-6. **Who launches the first campaigns:** a sales-led managed service at first, or self-serve from day one?
-7. **Hosting preference:** Supabase-managed Postgres/Auth (already connected) or plain managed Postgres plus our own auth?
-8. **Seasonal prize pool** size and funding source.
-9. **Domains:** the name is **Promoet**. Secure `promoet.ng` / `promoet.com` plus a short redirect domain for tracking links (the doc uses `pmt.ng` as a placeholder; check availability).
+| # | Topic | Decision | Where |
+|---|---|---|---|
+| 1 | Pricing models | **CPC and CPA at launch.** CPM as "Verified Views" on API-connected accounts in Phase 2 | §5.7, §5.8 |
+| 2 | Fee & charges | 15% taken **from** the advertiser's budget, 85% to creators. Advertiser pays Paystack fees when funding. Creator pays transfer fees when withdrawing | §7.1 |
+| 3 | Minimums | CPC ₦50, CPA ₦300/₦500, budget ₦25k (CPC) / ₦50k (CPA), top-up ₦10k, withdrawal ₦1k, 10% max share per creator | §7.1 |
+| 4 | Hold period | 7 days for new creators, reduced to 5 and then 3 days by level and clean record. CPA follows the advertiser approval window | §5.5 |
+| 5 | WhatsApp Status | Supported, with separate per-channel links, engaged-click rule, promo codes, stricter caps and quality scores | §5.9 |
+| 6 | Go-to-market | **Self-serve advertisers from day one**, with automated safeguards and human review of every campaign | §5.10 |
+| 7 | Hosting | **Supabase**: new project `promoet`, London (eu-west-2) | §3 |
+
+### Still open
+
+1. **VAT treatment** (agent vs principal) and whether the 15% is VAT-inclusive. Ask an accountant (§7.1).
+2. **Seasonal prize pool:** size and funding source.
+3. **Domains:** the name is **Promoet**. Secure `promoet.ng` / `promoet.com` plus a short redirect domain for tracking links (the doc uses `pmt.ng` as a placeholder; check availability).
+4. **Legal review** of the funds-holding structure, ARCON obligations and terms of service (§11).
