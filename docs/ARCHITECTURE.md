@@ -55,7 +55,7 @@ flowchart LR
 | **Creator app** (mobile-first PWA) | Influencers | Quests (`tab-quests`), Quest detail + link + media kit (`campaign-modal`), Loot Vault (`tab-vault`), Guild Rankings (`tab-guild`), Profile/KYC/Bank, Notifications |
 | **Advertiser portal** | Brands and agencies (organisations with members) | Command Center (`tab-studio`), Create Campaign wizard (`advertiser-modal`), Wallet/Funding, Analytics, Invoices |
 | **Admin console** | Internal ops | Campaign & creative review, Fraud queue, Payout approvals, User/KYC management, Ledger explorer, Season config |
-| **Redirect edge** | Anonymous visitors | `https://pmt.ng/r/{code}`: no UI, or a challenge page only when traffic looks risky |
+| **Redirect edge** | Anonymous visitors | `https://promoet.com/r/{code}`: no UI, or a challenge page only when traffic looks risky |
 
 ### Earnings display rule
 
@@ -195,7 +195,7 @@ clickable there). Platform rules change, so this table lives in config.
 | **Telegram** (`telegram`) | 1:1 or 16:9 image, caption ≤ 1,024 characters | In the message (clickable) in a channel or group **the creator owns or runs**. One-tap share via Telegram's share URL | Same extra fraud controls as WhatsApp (§5.9). Posting in other people's groups is spam and is banned in the creator terms |
 
 **Promoet bio page.** An Instagram profile has only one bio link, so each
-creator gets a page such as `pmt.ng/@ada` listing all their active Instagram
+creator gets a page such as `promoet.com/@ada` listing all their active Instagram
 quests. They set it once as their bio link and never have to change it.
 Opening the page is not billed. Tapping a quest on it goes through that
 quest's `instagram_bio` link and counts as a normal click.
@@ -757,7 +757,7 @@ person.
 - Quest feed, claim, **per-platform links for the six launch platforms** (WhatsApp Status, X, Facebook, Instagram Stories, Instagram bio link, Telegram), caption + `#ad` template, share buttons
 - Redirect worker, click queue, rules engine v1, link-preview crawler filter, budget reservation, 7-day hold
 - **CPA:** S2S postback, `promoet.js` pixel + engagement beacon, approval window
-- Platform-first claim flow, auto-generated platform formats, creator bio page (`pmt.ng/@handle`)
+- Platform-first claim flow, auto-generated platform formats, creator bio page (`promoet.com/@handle`)
 - Creator wallet (pending/available), earnings feed, bank account + KYC, **manually approved** withdrawals
 - Basic XP, levels, energy
 - Advertiser dashboard: clicks, valid %, spend, by creator and by day
@@ -803,14 +803,13 @@ person.
 | 4 | Hold period | **Flat 7 days for everyone**, regardless of level or account age. CPA: available once approved and at least 7 days old | §5.5 |
 | 5 | WhatsApp Status | Supported, with its own link per creator, engaged-click rule, stricter caps and quality scores | §5.9 |
 | 6 | Go-to-market | **Self-serve advertisers from day one**, with automated safeguards and human review of every campaign | §5.10 |
-| 7 | Hosting | **Supabase**: new project `promoet`, London (eu-west-2) | §3 |
+| 7 | Hosting | **Supabase**: project ref `zsbwmafckgqgjrsdnkkw`, org `Promoet`, region eu-west-1 (Ireland). API: `https://zsbwmafckgqgjrsdnkkw.supabase.co` | §3 |
 | 8 | Claim flow | **Platform first:** creators choose where they'll post, then get creatives, caption and link instructions made for that platform | §5.1 |
 | 9 | Launch platforms | **WhatsApp Status, X, Facebook, Instagram Stories, Instagram bio link, Telegram.** TikTok and Instagram feed/Reel links (other than through the bio page) are not supported at launch | §5.1 |
 | 10 | Tax | **Agent model** (VAT on the 25% fee only). VAT **off at launch**, switched on later. Invoices itemise creator payouts and the service fee. No tax deducted from creator payouts. Gateway fees have no VAT effect | §7.1 |
+| 11 | Domain | **`promoet.com`** is the main domain. All tracking links and bio pages use this domain (`promoet.com/r/{code}`, `promoet.com/@handle`). No separate short domain at launch | §2, §5.1 |
+| 12 | Prize pool | **Deferred to Phase 3.** Platform-funded from marketing budget; ranked by verified, released earnings; size TBD when seasons are built. No element of chance (avoids lottery/promotions regulations) | §6 |
 
 ### Still open
 
-1. **Seasonal prize pool:** size and funding source.
-2. **Domains:** the name is **Promoet**. Secure `promoet.ng` / `promoet.com` plus a short redirect domain for tracking links (the doc uses `pmt.ng` as a placeholder; check availability).
-3. **Supabase project:** the Bluu organisation is at the free plan's 2-project limit. Pause a project or upgrade before Phase 0 starts.
-4. **Legal review** of the funds-holding structure, ARCON obligations and terms of service (§11).
+1. **Legal review** of the funds-holding structure, ARCON obligations and terms of service (§11).
