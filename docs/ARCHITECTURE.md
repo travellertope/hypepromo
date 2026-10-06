@@ -6,10 +6,10 @@
 Promoet is a two-sided marketplace for Nigeria. **Advertisers** fund
 campaigns that pay **per verified click (CPC)** or **per conversion (CPA)**.
 **Micro-influencers ("creators")** pick up campaigns as *quests*, post the ad
-assets on TikTok / IG / X / WhatsApp Status with a unique tracking link or
-promo code, and earn **75% of every billed click or conversion**. The
-platform keeps 25% of the advertiser's budget (VAT is paid out of this share). Game mechanics (XP, levels, energy,
-leaderboards, guilds) drive engagement **and** double as the trust system.
+assets on the platforms they choose (WhatsApp Status, Instagram, TikTok, X,
+Facebook) with a unique tracking link per platform, and earn **75% of every billed click or conversion**. The
+platform keeps 25% of the advertiser's budget (VAT is paid out of this
+share). Game mechanics (XP, levels, energy, leaderboards, guilds) drive engagement **and** double as the trust system.
 
 ---
 
@@ -149,7 +149,7 @@ Modules do not reach into each other's tables.
 | `creator` | Creator profile, linked social accounts, niches, state/city, tier, KYC status, bank accounts |
 | `campaigns` | Campaign CRUD, targeting, creatives, moderation state, budget and caps, lifecycle state machine |
 | `quests` | Quest claims, referral links (short codes), post-proof submissions, eligibility checks |
-| `tracking` | Click ingestion consumer, fraud rules engine, verdicts, conversion postbacks / pixel / promo codes, channel quality scores |
+| `tracking` | Click ingestion consumer, fraud rules engine, verdicts, conversion postbacks / pixel, per-platform quality scores |
 | `ledger` | Double-entry accounts and journal, balance queries, holds and releases, reversals |
 | `payments` | Paystack collections (advertiser funding), webhooks, transfers (creator payouts), reconciliation |
 | `game` | XP, levels, energy, streaks, badges, seasons, leaderboards, guilds |
@@ -164,12 +164,43 @@ Modules do not reach into each other's tables.
 This flow is the whole business, and the main risk is **click fraud**. Most
 of the engineering effort goes here.
 
-### 5.1 Claiming a quest
+### 5.1 Claiming a quest: platform first
 
-1. Creator taps **Accept Quest & Get Link**. The client calls `POST /quests/{campaignId}/claim`.
-2. The API checks: campaign is `live` with budget left, creator meets the targeting rules (tier, niche, state, minimum level), creator has enough **energy**, and has no existing claim for this campaign.
-3. The API creates a `referral_link` with a **random 8-character base62 code** (unguessable, not derived from the username), spends energy, and writes `code → {link_id, campaign_id, target_url, status}` to Workers KV.
-4. Response: link `https://pmt.ng/r/Xk29PqLm`, creatives, suggested captions, and the required disclosure text (`#ad` / `#sponsored`).
+The creator picks **where** they will post first, then gets a kit made for
+that platform.
+
+1. The creator opens a quest and sees the platforms the advertiser allowed (for example WhatsApp Status, Instagram, TikTok, X, Facebook).
+2. They **select one or more platforms** and tap **Accept Quest**. The client calls `POST /quests/{campaignId}/claim {platforms: ["whatsapp","instagram"]}`.
+3. The API checks: campaign is `live` with budget left, creator meets the targeting rules (tier, niche, state, minimum level), creator has enough **energy** (the claim costs the base amount plus a little for each extra platform), and the platforms are allowed on this campaign.
+4. For **each platform** the API creates a `referral_link` with its own **random 8-character base62 code** (unguessable, not derived from the username) and writes `code → {link_id, campaign_id, platform, target_url, status}` to Workers KV.
+5. The response is a **kit per platform**:
+   - creatives in that platform's format (§5.1.1);
+   - a caption that fits the platform's length limit, with the link and `#ad`/`#sponsored` already in place;
+   - **where to put the link** on that platform (table below), and a one-tap share button where the platform allows it.
+6. The creator can add another platform to the same quest later. Each platform keeps its own stats, caps and quality score.
+
+**Where the link goes on each platform** (platform rules change, so keep this table in config):
+
+| Platform | Creative format | Where the link works |
+|---|---|---|
+| WhatsApp Status | 9:16 image or short video | In the Status caption/text, where it is clickable. One-tap "Share to WhatsApp" |
+| Instagram | 9:16 for Stories/Reels, 4:5 or 1:1 for feed posts | Captions aren't clickable. Use the **Story link sticker**, or the bio link ("link in bio") |
+| TikTok | 9:16 video | Captions aren't clickable. Use the **bio link** where TikTok allows one on the creator's account, and say "link in bio" in the video |
+| X | 16:9 or 1:1 image/video | In the post itself (clickable) |
+| Facebook | 1:1, 4:5 or 9:16 | In the post (clickable) or a Story link sticker |
+
+**Promoet bio page.** A profile has only one bio link, so each creator gets a
+page such as `pmt.ng/@ada` that lists all their active quests. They set it once
+as their Instagram/TikTok bio link and never have to change it. Opening the
+page is not billed. Tapping a quest on it goes through that quest's
+Instagram or TikTok link and counts as a normal click.
+
+#### 5.1.1 Platform-ready creatives
+
+- The advertiser uploads **one master image or video** in the campaign wizard. Promoet automatically produces each format (9:16, 4:5, 1:1, 16:9) with smart cropping or padding that keeps text out of each platform's covered areas (such as under the TikTok/Reels buttons).
+- The advertiser previews every version and can upload their own replacement for any platform.
+- The caption is written once, then shortened or adjusted per platform (for example to fit X's character limit). The advertiser can edit each version.
+- Creators can only select the platforms the advertiser enabled.
 
 > The prototype's `?r=user_id&ad=campaign_slug` format leaks identities and
 > can be tampered with. Use opaque codes instead.
@@ -271,11 +302,11 @@ Example (7-day hold):
 | Mon 13 Oct | ₦7,500 moves to *available*; Ada can withdraw |
 
 **Hold period: a flat 7 days for every creator**, whatever their level or
-account age. It is simple to explain, and it's the same on every channel.
+account age. It is simple to explain, and it's the same on every platform.
 
 | Situation | When earnings become available |
 |---|---|
-| Clicks (all creators, all channels) | **7 days** after the click |
+| Clicks (all creators, all platforms) | **7 days** after the click |
 | CPA conversions | When the conversion is approved (by the advertiser, or automatically after 14 days, §5.7) **and** is at least 7 days old |
 | Any link currently under `review` | Frozen until reviewed, then follows the rule above |
 
@@ -305,6 +336,11 @@ and approved. Advertisers trust this model more, and it is much harder to fake.
 or a % of order value), `app_install` (later, through an attribution provider
 such as AppsFlyer or Adjust).
 
+**No promo codes.** Conversions are tracked through the creator's link: the
+redirect adds `pm_click` to the landing-page URL, and the advertiser's
+pixel or server reports it back with the conversion. The visitor never types
+anything, so it works on any website, with or without a discount-code field.
+
 **How conversions are reported** (the advertiser chooses one or more in the
 campaign wizard):
 
@@ -312,76 +348,43 @@ campaign wizard):
 |---|---|---|
 | **Server-to-server postback** (recommended) | The advertiser's backend calls `POST /v1/conversions {click_id, event, order_id, value}` with an org API key | Anyone with a developer |
 | **JS pixel** | A small `promoet.js` script on the landing page saves `pm_click` in a first-party cookie. The thank-you page fires `promoet('conversion', {...})` | Simple websites, landing builders |
-| **Creator promo codes** | Each claim also gets a unique code (`ADA-CYBER10`). The advertiser uploads redeemed codes (CSV) or reports them by API | **WhatsApp, DMs, offline shops, Instagram vendors.** No link needed |
 | **Integrations** (later) | Shopify / WooCommerce plugins; app attribution providers | E-commerce, apps |
 
 **Rules:**
 
-- **Attribution:** last valid click wins, within a 7-day window by default (the advertiser can set 1–30 days). A promo-code redemption always wins over a link click.
+- **Attribution:** last valid click wins, within a 7-day window by default (the advertiser can set 1–30 days).
 - **Dedupe:** each `(campaign, order_id)` is counted once, and each visitor once per campaign for lead campaigns.
 - **Approval window:** conversions arrive as *pending approval*. The advertiser can reject one with a reason (refund, fake signup) within **14 days**. After that it is **auto-approved**. This is shown to creators as part of the hold (§5.5).
 - **Guarding against advertisers who under-report or reject unfairly:** track each advertiser's rejection rate and click → conversion rate. If it looks wrong, ops reviews it. Advertisers with high rejection rates lose access to top creators. Creators can see each campaign's approval rate before claiming.
 - **Conversion fraud signals:** a conversion within seconds of the click, many conversions from one device, the same visitor converting through several creators, and email or phone patterns shared by many leads.
 - **Billing:** the same budget-reservation transaction as for clicks, using `unit_price_kobo`. The 75/25 split applies.
 
-### 5.8 Can pay-per-impression (CPM) work here?
+### 5.8 Impressions (CPM): not offered
 
-**Not reliably with links alone, but yes for verified views on connected
-accounts. Plan it for Phase 2.**
+Promoet bills **only clicks and conversions**. Impressions happen inside
+WhatsApp, Instagram, TikTok and X, where Promoet can't count them.
+Screenshots are easy to fake. The platform APIs that report views need long
+app reviews, cost money on X, and don't exist for WhatsApp Status. Promoet
+measures clicks and conversions itself, so every naira billed is backed by
+its own data.
 
-The difficulty is that **impressions happen inside TikTok, Instagram, X and
-WhatsApp, not on Promoet.** Promoet only sees someone who *clicked*. Nobody
-can count who merely *saw* the post except the platform itself. So the options
-are:
-
-| Option | Verdict |
-|---|---|
-| Creator uploads a screenshot of view counts | ❌ Easy to fake, impossible to audit at scale |
-| Count loads of our link-preview image | ❌ Counts crawlers and caches, not people |
-| **Read view counts from the platform's official API** after the creator connects their account (see the platform table below) | ✅ Works. The creator links the specific post URL, and Promoet polls the view count for N days (e.g. 7) and bills per 1,000 new views |
-| WhatsApp Status views | ❌ There is no API for personal Status views. WhatsApp **Channels** show follower counts but no reliable per-post view API |
-
-**Platform API access (checked October 2026; re-check before building):**
-
-| Platform | Cost to Promoet | Which creator accounts | View data | Approval needed |
-|---|---|---|---|---|
-| **Instagram** (Instagram API with Instagram Login) | Free | **Professional accounts only** (Creator or Business). Personal accounts can't connect, but switching to a free Creator account takes a minute in Instagram settings | `views` and reach per post, reel and story through media insights. Story insights only exist while the story is live (24 h), so poll during that window | Meta App Review for the insights permission, plus Meta Business Verification of Promoet's company (CAC documents) |
-| **TikTok** (Login Kit + Display API) | Free | Any account, personal included | `view_count`, likes, comments and shares on the creator's own videos | TikTok app review: submit the app with a demo video of the login flow |
-| **YouTube** (Data API v3) | Free within the daily quota (10,000 units; one call checks up to 50 videos) | Any channel | `viewCount` is public for every video. OAuth is only needed to prove channel ownership (or use a code in the channel description instead) | Google OAuth verification only if we use OAuth sign-in |
-| **X / Twitter** (API v2) | **Paid**: no free tier for new developers since Feb 2026. Pay-per-use at about **$0.005 per post read** | Any account | `impression_count` in a post's public metrics. Polling a post daily for 7 days ≈ $0.035, so 1,000 tracked posts per month ≈ $35 | Developer account with billing set up. Ownership can be proven with a code in the bio (no OAuth needed) |
-| **WhatsApp Status** | — | — | No API exists | Not possible |
-
-Even views from the API can be inflated with cheap bought views. So
-"Verified Views" campaigns need safeguards:
-
-- Only creators with connected and verified accounts, at level 5+, with an established audience.
-- Views/followers and engagement/views ratios checked against the creator's own history. Sudden spikes go to review.
-- A cap per post (for example at most 3× the creator's median views are billable).
-- Billed for views gained during the first 7 days after posting only.
-- A hybrid option (a smaller CPM plus CPC) so advertisers still get traffic.
-
-Prerequisites, which have long lead times: Meta app review and the TikTok
-developer app audit. Start these applications in Phase 1 so they are approved
-in time for Phase 2.
-
-### 5.9 WhatsApp Status as a channel
+### 5.9 WhatsApp Status as a platform
 
 WhatsApp Status is Nigeria's largest "feed", so Promoet should support it. The
 key point is that **for CPC and CPA campaigns, nothing needs to be verified
 about the post itself.** Promoet pays for clicks and conversions that come
-through the link or code, wherever they were shared. What WhatsApp makes
+through the link, wherever it was shared. What WhatsApp makes
 harder is **fraud**: links pasted into big "click for click" groups, or sent
 to friends who click out of politeness. The design:
 
-1. **A separate link per channel.** When claiming a quest, the creator picks channels and gets a separate code for each (`/r/Xk29PqLm` for TikTok, `/r/Wa7Hq2Zs` for WhatsApp). Stats, caps and risk are tracked per channel.
+1. **Its own link.** Creators pick platforms first (§5.1), so a WhatsApp claim gets its own link (`/r/Wa7Hq2Zs`), separate from the same creator's Instagram link. Stats, caps and risk are tracked per platform.
 2. **Share-ready kit.** A 9:16 Status image or video with the caption, link and `#ad` already composed. A one-tap "Share to WhatsApp" button (`https://wa.me/?text=…` on the web, the share sheet in the PWA). Open Graph tags on the link make the preview look good.
 3. **Engaged clicks only.** For WhatsApp links, a click is billable only if the landing-page beacon confirms the page loaded and stayed open for ≥ 3 seconds, or a conversion follows. This requires the advertiser's one-line script, so campaigns without it can only be CPA on WhatsApp.
-4. **Stricter limits:** lower per-creator daily caps on the WhatsApp channel until the creator builds a track record. Rules 4–6 in §5.3 apply per channel.
-5. **Channel quality score.** For each creator and channel, compare downstream quality (dwell rate, conversion rate, reversal rate) with the campaign average. Low-quality channels get throttled. High-quality WhatsApp sharers unlock higher caps and premium campaigns.
-6. **Advertiser control.** Campaigns opt in to channels. WhatsApp is on by default for CPA and off by default for CPC.
-7. **Promo codes** (§5.7) are the most reliable way for WhatsApp sharers to earn, especially for vendors and service businesses.
-8. **Optional post-proof:** a screenshot of the Status with the "seen by N" count earns a small amount of XP only, never money, because screenshots can be faked.
-9. **WhatsApp Channels** (public broadcast channels) are treated like a social account: the creator verifies ownership by posting a code, and the follower count counts toward their tier.
+4. **Stricter limits:** lower per-creator daily caps on WhatsApp until the creator builds a track record. Rules 4–6 in §5.3 apply per platform.
+5. **Platform quality score.** For each creator and platform, compare downstream quality (dwell rate, conversion rate, reversal rate) with the campaign average. Low-quality links get throttled. High-quality WhatsApp sharers unlock higher caps and premium campaigns.
+6. **Advertiser control.** Campaigns opt in to platforms. WhatsApp is on by default for CPA and off by default for CPC.
+7. **Optional post-proof:** a screenshot of the Status with the "seen by N" count earns a small amount of XP only, never money, because screenshots can be faked.
+8. **WhatsApp Channels** (public broadcast channels) are treated like a social account: the creator verifies ownership by posting a code, and the follower count counts toward their tier.
 
 ### 5.10 Self-serve advertisers from day one
 
@@ -531,12 +534,11 @@ erDiagram
 | `social_accounts` | id, creator_id, platform (tiktok/ig/x/whatsapp/youtube), handle, followers, verified_at, verification_method |
 | `organizations` | id, name, rc_number (CAC), billing_email, verification_tier (unverified/verified), card_funding_cap_kobo, cpa_approval_rate, api_key_hash, status |
 | `org_members` | org_id, user_id, role (owner/admin/analyst) |
-| `campaigns` | id, org_id, title, slug, description, category, landing_url, billing_model (cpc/cpa/cpm_views), unit_price_kobo, conversion_event, attribution_window_days, approval_window_days, allowed_channels[], requires_beacon, creator_share_bps (7500), max_creator_share_bps, budget_kobo, spent_kobo, daily_cap_kobo, per_creator_daily_click_cap, targeting (jsonb: states, niches, min_level, platforms), starts_at, ends_at, status, arcon_ref, moderation_notes |
-| `creatives` | id, campaign_id, type (image/video/caption), storage_key, width, height, duration, status |
+| `campaigns` | id, org_id, title, slug, description, category, landing_url, billing_model (cpc/cpa), unit_price_kobo, conversion_event, attribution_window_days, approval_window_days, allowed_platforms[], requires_beacon, creator_share_bps (7500), max_creator_share_bps, budget_kobo, spent_kobo, daily_cap_kobo, per_creator_daily_click_cap, targeting (jsonb: states, niches, min_level, platforms), starts_at, ends_at, status, arcon_ref, moderation_notes |
+| `creatives` | id, campaign_id, master_id/null, platform/null (null = master), aspect (9:16, 4:5, 1:1, 16:9), type (image/video/caption), storage_key, width, height, duration, source (uploaded/auto), status |
 | `quest_claims` | id, campaign_id, creator_id, energy_spent, claimed_at, post_proof_url, proof_status — unique(campaign_id, creator_id) |
-| `referral_links` | id, claim_id, channel (tiktok/ig/x/whatsapp/other), code (unique), status (active/throttled/disabled), quality_score |
-| `promo_codes` | id, claim_id, code (unique per campaign), redeemed_count |
-| `conversions` | id, campaign_id, click_id/null, promo_code_id/null, creator_id, event, order_id, value_kobo, source (postback/pixel/code_upload), status (pending_approval/approved/rejected/invalid), reject_reason, approve_by, journal_entry_id — unique(campaign_id, order_id) |
+| `referral_links` | id, claim_id, platform (whatsapp/instagram/tiktok/x/facebook), code (unique), status (active/throttled/disabled), quality_score — unique(claim_id, platform) |
+| `conversions` | id, campaign_id, click_id, creator_id, event, order_id, value_kobo, source (postback/pixel), status (pending_approval/approved/rejected/invalid), reject_reason, approve_by, journal_entry_id — unique(campaign_id, order_id) |
 | `beacons` | click_id, loaded_at, dwell_ms |
 | `clicks` | id (ULID), link_id, campaign_id, creator_id, ts, ip_hash, asn, country, ua_hash, fp_hash, visitor_id, referrer_host, edge_bot_score — **partitioned by month** |
 | `click_verdicts` | click_id, verdict, reasons[], ruleset_version, billed_kobo, journal_entry_id, released_at, reversed_at |
@@ -571,7 +573,9 @@ Auth
 Creator
   GET  /quests?category=&sort=payout|new&cursor=
   GET  /quests/:campaignId
-  POST /quests/:campaignId/claim            → referral link
+  POST /quests/:campaignId/claim            {platforms[]} → link + kit per platform
+  POST /quests/:campaignId/platforms        {platform} → add a platform later
+  GET  /@:handle                            public creator bio page (web)
   POST /quests/:campaignId/proof            {post_url}
   GET  /quests/:campaignId/media-kit        → signed zip URL
   GET  /me/links                            per-link stats
@@ -591,12 +595,11 @@ Advertiser (scoped to org)
   GET  /orgs/:orgId/campaigns/:id/analytics?granularity=hour|day
   POST /orgs/:orgId/wallet/fund              → Paystack checkout URL
   GET  /orgs/:orgId/wallet  /invoices
-  POST /orgs/:orgId/campaigns/:id/promo-codes/redemptions   (CSV upload)
   GET  /orgs/:orgId/conversions?status=pending_approval     POST .../:id/approve|reject
   POST /orgs/:orgId/api-keys
 
 Conversions (advertiser servers, API-key auth)
-  POST /v1/conversions          {click_id | promo_code, event, order_id, value}
+  POST /v1/conversions          {click_id, event, order_id, value}
 
 Admin
   GET  /admin/review/campaigns  POST .../:id/approve|reject
@@ -719,10 +722,10 @@ person.
 - Creator onboarding: profile, social handles (verified by putting a code in the bio), niches, state
 - **Self-serve advertiser sign-up**, verification tiers, campaign wizard (CPC or CPA), creative upload, automated checks plus human review (§5.10)
 - Advertiser funding through Paystack with the fee grossed up, plus dedicated virtual accounts for bank transfers
-- Quest feed, claim, **per-channel links including WhatsApp**, caption + `#ad` template, Status-ready share kit
+- Quest feed, claim, **per-platform links including WhatsApp**, caption + `#ad` template, share buttons
 - Redirect worker, click queue, rules engine v1, link-preview crawler filter, budget reservation, 7-day hold
-- **CPA:** S2S postback, `promoet.js` pixel + engagement beacon, creator promo codes, approval window
-- Submit Meta and TikTok developer app reviews (needed for Verified Views in Phase 2)
+- **CPA:** S2S postback, `promoet.js` pixel + engagement beacon, approval window
+- Platform-first claim flow, auto-generated platform formats, creator bio page (`pmt.ng/@handle`)
 - Creator wallet (pending/available), earnings feed, bank account + KYC, **manually approved** withdrawals
 - Basic XP, levels, energy
 - Advertiser dashboard: clicks, valid %, spend, by creator and by day
@@ -730,10 +733,9 @@ person.
 - **Launch:** advertisers are open from day one. Creators are let in from a waitlist in batches (Lagos and Abuja first) so the supply of creators doesn't outgrow the advertiser budget available
 
 ### Phase 2 — Scale (weeks 13–20)
-- **Verified Views (CPM)** for connected Instagram, TikTok and YouTube accounts (§5.8)
-- OAuth social verification and follower sync
+- OAuth social verification and follower sync (optional; the bio code keeps working)
 - Advanced targeting (state, niche, level, platform), daily caps, scheduling
-- Channel quality scores, Shopify/WooCommerce plugins
+- Platform quality scores, Shopify/WooCommerce plugins
 - Automatic payouts below a risk threshold, retries, reconciliation dashboard
 - Seasons, leaderboards (global/state/niche), badges, streaks
 - Web push, WhatsApp notifications, media-kit zips, post-proof review
@@ -752,7 +754,7 @@ person.
 ## 15. Key metrics
 
 - **Marketplace:** GMV (campaign spend), take rate, creator payouts, number of live campaigns, budget usage
-- **Quality:** valid-click rate, reversal rate, advertiser repeat-funding rate, cost per conversion, CPA approval rate per advertiser, quality score per channel
+- **Quality:** valid-click rate, reversal rate, advertiser repeat-funding rate, cost per conversion, CPA approval rate per advertiser, quality score per platform
 - **Creators:** activation (first valid click within 7 days), D7/D30 retention, median monthly earnings, withdrawal success rate
 - **Ops:** payout turnaround time, size of the fraud queue, reconciliation differences (target ₦0)
 
@@ -762,13 +764,14 @@ person.
 
 | # | Topic | Decision | Where |
 |---|---|---|---|
-| 1 | Pricing models | **CPC and CPA at launch.** CPM as "Verified Views" on API-connected accounts in Phase 2 | §5.7, §5.8 |
+| 1 | Pricing models | **Clicks (CPC) and conversions (CPA) only.** Impressions/CPM dropped. No promo codes: conversions are tracked through the link | §5.7, §5.8 |
 | 2 | Fee & charges | **25%** taken **from** the advertiser's budget (raised from 15% so VAT can be paid out of it), 75% to creators. Advertiser pays Paystack fees when funding. Creator pays transfer fees when withdrawing | §7.1 |
 | 3 | Minimums | CPC ₦50, CPA ₦300/₦500, budget ₦25k (CPC) / ₦50k (CPA), top-up ₦10k, withdrawal ₦1k, 10% max share per creator | §7.1 |
 | 4 | Hold period | **Flat 7 days for everyone**, regardless of level or account age. CPA: available once approved and at least 7 days old | §5.5 |
-| 5 | WhatsApp Status | Supported, with separate per-channel links, engaged-click rule, promo codes, stricter caps and quality scores | §5.9 |
+| 5 | WhatsApp Status | Supported, with its own link per creator, engaged-click rule, stricter caps and quality scores | §5.9 |
 | 6 | Go-to-market | **Self-serve advertisers from day one**, with automated safeguards and human review of every campaign | §5.10 |
 | 7 | Hosting | **Supabase**: new project `promoet`, London (eu-west-2) | §3 |
+| 8 | Claim flow | **Platform first:** creators choose where they'll post, then get creatives, caption and link instructions made for that platform | §5.1 |
 
 ### Still open
 
