@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { pgTable, uuid, text, integer, bigint, timestamp, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, bigint, timestamp, pgEnum, date } from 'drizzle-orm/pg-core'
 import { users } from './users.ts'
 
 export const tierEnum = pgEnum('creator_tier', ['starter', 'rising', 'pro', 'elite'])
@@ -21,6 +21,9 @@ export const creators = pgTable('creators', {
   bankAccountNumber: text('bank_account_number'),
   bankAccountName: text('bank_account_name'),
   paystackRecipientCode: text('paystack_recipient_code'),
+  // streak
+  streakDays: integer('streak_days').notNull().default(0),
+  streakLastDate: date('streak_last_date'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

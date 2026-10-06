@@ -7,8 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 # Run `wrangler kv namespace create LINKS` then fill in the IDs below.
 [[kv_namespaces]]
 binding = "LINKS"
-id = "PLACEHOLDER_KV_ID"
-preview_id = "PLACEHOLDER_KV_PREVIEW_ID"
+id = "addec1128ea94f97a5d2123d112efb95"
+preview_id = "addec1128ea94f97a5d2123d112efb95"
 
 # ── Queue producer ────────────────────────────────────────────────────────────
 # Run `wrangler queues create promoet-clicks` then fill below.

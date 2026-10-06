@@ -3,7 +3,7 @@ import { db } from '@promoet/db/client'
 import { creators, xpEvents } from '@promoet/db/schema'
 import { xpToLevel } from '@promoet/config'
 
-export type XpKind = 'quest_claim' | 'click_release' | 'first_clicks_bonus' | 'fraud_penalty'
+export type XpKind = 'quest_claim' | 'click_release' | 'first_clicks_bonus' | 'fraud_penalty' | 'post_proof_approved'
 
 export async function awardXp(
   creatorId: string,

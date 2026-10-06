@@ -1,9 +1,8 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-// Refreshes the Supabase session on every request so cookies stay current
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  let response = NextResponse.next({ request: { headers: request.headers } })
 
   const supabase = createServerClient(
     process.env['NEXT_PUBLIC_SUPABASE_URL']!,
@@ -14,39 +13,44 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request: { headers: request.headers } })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            response.cookies.set(name, value, options),
           )
         },
       },
     },
   )
 
-  // Refresh session — must be called before checking session
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protect authenticated routes
-  const pathname = request.nextUrl.pathname
-  const isAuthRoute = pathname.startsWith('/auth')
-  const isProtected =
+  const { pathname } = request.nextUrl
+
+  // Protected routes — redirect to login if not authed
+  if (
     pathname.startsWith('/creator') ||
     pathname.startsWith('/advertiser') ||
     pathname.startsWith('/admin')
-
-  if (isProtected && !user) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+  ) {
+    if (!user) {
+      const role = pathname.startsWith('/creator')
+        ? 'creator'
+        : pathname.startsWith('/advertiser')
+          ? 'advertiser'
+          : 'admin'
+      const loginUrl = new URL('/auth/login', request.url)
+      loginUrl.searchParams.set('role', role)
+      return NextResponse.redirect(loginUrl)
+    }
   }
 
-  // Redirect already-authenticated users away from auth pages
-  if (isAuthRoute && user) {
+  // Already authed users visiting auth pages → send them home
+  if (pathname.startsWith('/auth') && user) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  return supabaseResponse
+  return response
 }
 
 export const config = {

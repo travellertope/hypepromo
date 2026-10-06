@@ -16,6 +16,8 @@ import paymentsRoutes from './modules/payments/router.ts'
 import internalRoutes from './modules/internal/router.ts'
 import adminWithdrawalRoutes from './modules/admin/withdrawals.ts'
 import adminFraudRoutes from './modules/admin/fraud.ts'
+import leaderboardRoutes from './modules/leaderboards/router.ts'
+import proofsRoutes from './modules/proofs/router.ts'
 
 const isDev = process.env['NODE_ENV'] !== 'production'
 
@@ -50,6 +52,8 @@ await app.register(paymentsRoutes, { prefix: '/v1' })
 await app.register(internalRoutes, { prefix: '/v1' })
 await app.register(adminWithdrawalRoutes, { prefix: '/v1' })
 await app.register(adminFraudRoutes, { prefix: '/v1' })
+await app.register(leaderboardRoutes, { prefix: '/v1' })
+await app.register(proofsRoutes, { prefix: '/v1' })
 
 const port = Number(process.env['PORT'] ?? 3001)
 const host = process.env['HOST'] ?? '0.0.0.0'
