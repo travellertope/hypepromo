@@ -120,7 +120,7 @@ flowchart TB
 | Monorepo | pnpm + Turborepo | `apps/*` and `packages/*` (§13) |
 | Web | **Next.js (App Router)** + Tailwind + **Serwist** (PWA) | SSR for the advertiser/marketing pages, installable PWA for creators |
 | API | **Fastify** + Zod + **Drizzle ORM** | Fast, explicit SQL control for ledger transactions |
-| DB + Auth | **Supabase** (decided): Postgres, Auth (phone OTP), Storage. New project `promoet` in **eu-west-2 (London)** | ACID ledger, partitioning for clicks, row locks for budgets. Supabase has no African region; London has the best routes from Lagos |
+| DB + Auth | **Supabase** (decided): Postgres, Auth (phone OTP), Storage. Project ref `zsbwmafckgqgjrsdnkkw`, eu-west-1 (Ireland) | ACID ledger, partitioning for clicks, row locks for budgets |
 | Cache/queues | **Redis** (Upstash or managed) + **BullMQ** | Jobs, rate limits, sorted-set leaderboards |
 | Redirect | **Cloudflare Workers** + KV + Queues | Under 50 ms redirects near Lagos, bot score / ASN / TLS fingerprint signals at the edge, absorbs viral spikes |
 | Storage | Supabase Storage for creatives (with its CDN). Move hot media to Cloudflare R2 if egress costs grow | One less vendor at launch |
@@ -809,6 +809,7 @@ person.
 | 10 | Tax | **Agent model** (VAT on the 25% fee only). VAT **off at launch**, switched on later. Invoices itemise creator payouts and the service fee. No tax deducted from creator payouts. Gateway fees have no VAT effect | §7.1 |
 | 11 | Domain | **`promoet.com`** is the main domain. All tracking links and bio pages use this domain (`promoet.com/r/{code}`, `promoet.com/@handle`). No separate short domain at launch | §2, §5.1 |
 | 12 | Prize pool | **Deferred to Phase 3.** Platform-funded from marketing budget; ranked by verified, released earnings; size TBD when seasons are built. No element of chance (avoids lottery/promotions regulations) | §6 |
+| 13 | App/API hosting | **Render** (free tier during build and first ~100 users, upgrade to Starter $7/mo before public launch). Migrate to Fly.io when scaling. Next.js on **Vercel** (free) | §3 |
 
 ### Still open
 
