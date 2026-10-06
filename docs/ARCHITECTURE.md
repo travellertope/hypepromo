@@ -7,8 +7,8 @@ Promoet is a two-sided marketplace for Nigeria. **Advertisers** fund
 campaigns that pay **per verified click (CPC)** or **per conversion (CPA)**.
 **Micro-influencers ("creators")** pick up campaigns as *quests*, post the ad
 assets on TikTok / IG / X / WhatsApp Status with a unique tracking link or
-promo code, and earn **85% of every billed click or conversion**. The
-platform keeps 15% of the advertiser's budget. Game mechanics (XP, levels, energy,
+promo code, and earn **75% of every billed click or conversion**. The
+platform keeps 25% of the advertiser's budget (VAT is paid out of this share). Game mechanics (XP, levels, energy,
 leaderboards, guilds) drive engagement **and** double as the trust system.
 
 ---
@@ -22,7 +22,7 @@ changes:
 |---|---|
 | Creator and advertiser views mixed in one UI | Three separate surfaces: **Creator app**, **Advertiser portal**, **Admin console**, with role-based access |
 | Wallet, XP and energy stored in `localStorage` | All money and progress live **on the server only**. The client is never trusted |
-| `cpc * 0.85` with `toFixed(1)` (fractional naira) | Integer **kobo** amounts. A double-entry **ledger** is the source of truth for every balance |
+| `cpc * 0.85` with `toFixed(1)` (fractional naira, old 85/15 split) | Integer **kobo** amounts. A double-entry **ledger** is the source of truth for every balance |
 | "Verified click web-hook" (simulated) | A real edge **redirect service**, an async **fraud-scoring pipeline**, and a **hold period** before earnings can be withdrawn |
 | "Cash Out to Bank" toast | KYC, bank account name check, and Paystack/Flutterwave **transfers** |
 | Hard-coded campaigns | Campaign lifecycle: draft → review → funded → live → paused/exhausted → closed |
@@ -254,9 +254,9 @@ Example (7-day hold):
 
 | Day | What happens |
 |---|---|
-| Mon 6 Oct | Ada's link gets 120 valid clicks at ₦100 CPC → ₦10,200 shows as *pending* (85%) |
-| Tue–Sun | Nightly re-scoring finds 20 clicks from a click farm → ₦1,700 reversed, ₦2,000 back to the advertiser's campaign |
-| Mon 13 Oct | ₦8,500 moves to *available*; Ada can withdraw |
+| Mon 6 Oct | Ada's link gets 120 valid clicks at ₦100 CPC → ₦9,000 shows as *pending* (75%) |
+| Tue–Sun | Nightly re-scoring finds 20 clicks from a click farm → ₦1,500 reversed, ₦2,000 back to the advertiser's campaign |
+| Mon 13 Oct | ₦7,500 moves to *available*; Ada can withdraw |
 
 Recommended hold periods at launch (configurable):
 
@@ -312,7 +312,7 @@ campaign wizard):
 - **Approval window:** conversions arrive as *pending approval*. The advertiser can reject one with a reason (refund, fake signup) within **14 days**. After that it is **auto-approved**. This is shown to creators as part of the hold.
 - **Guarding against advertisers who under-report or reject unfairly:** track each advertiser's rejection rate and click → conversion rate. If it looks wrong, ops reviews it. Advertisers with high rejection rates lose access to top creators. Creators can see each campaign's approval rate before claiming.
 - **Conversion fraud signals:** a conversion within seconds of the click, many conversions from one device, the same visitor converting through several creators, and email or phone patterns shared by many leads.
-- **Billing:** the same budget-reservation transaction as for clicks, using `unit_price_kobo`. The 85/15 split applies.
+- **Billing:** the same budget-reservation transaction as for clicks, using `unit_price_kobo`. The 75/25 split applies.
 
 ### 5.8 Can pay-per-impression (CPM) work here?
 
@@ -433,7 +433,7 @@ free-floating `balance` column that code can change directly.
 |---|---|---|
 | Advertiser funds ₦1,000,000 net (pays ₦1,002,000 incl. Paystack fee; `charge.success`) | `psp_clearing` ₦1,000,000 | `advertiser_wallet` ₦1,000,000 |
 | Campaign launched with ₦500,000 budget | `advertiser_wallet` | `campaign_escrow` |
-| Valid click, CPC ₦500 (or approved conversion at ₦500) | `campaign_escrow` 50,000k | `creator_pending` 42,500k · `platform_revenue` 7,500k |
+| Valid click, CPC ₦500 (or approved conversion at ₦500) | `campaign_escrow` 50,000k | `creator_pending` 37,500k · `platform_revenue` + `vat_payable` 12,500k (VAT split per §7.1) |
 | Hold released | `creator_pending` | `creator_available` |
 | Click reversed (fraud) | `creator_pending` · `platform_revenue` | `campaign_escrow` |
 | Creator withdraws ₦20,000 (₦25 fee → ₦19,975 arrives) | `creator_available` ₦20,000 | `payouts_in_transit` ₦20,000 |
@@ -441,7 +441,7 @@ free-floating `balance` column that code can change directly.
 | Campaign closed with unspent budget | `campaign_escrow` | `advertiser_wallet` |
 | Advertiser withdraws or refunds | `advertiser_wallet` | `psp_clearing` |
 
-**Split rounding:** `creator = floor(cpc × 8500 / 10000)` and
+**Split rounding:** `creator = floor(cpc × 7500 / 10000)` and
 `platform = cpc − creator`. The platform absorbs any rounding, and fee
 percentages are stored per campaign so changing the fee never rewrites
 history.
@@ -451,9 +451,9 @@ Paystack balance and settlement reports, and alerts on any difference.
 
 ### 7.1 Fees, charges and minimums (decided)
 
-**Platform fee:** 15% is taken **out of** the advertiser's budget. With a
+**Platform fee:** 25% is taken **out of** the advertiser's budget. With a
 ₦100,000 budget at ₦100 CPC the advertiser buys 1,000 clicks, creators
-receive ₦85,000 and Promoet keeps ₦15,000. Nothing is added on top.
+receive ₦75,000 and Promoet keeps ₦25,000. Nothing is added on top.
 
 **Paystack charges, paid by whoever moves the money:**
 
@@ -465,19 +465,24 @@ receive ₦85,000 and Promoet keeps ₦15,000. Nothing is added on top.
 These fee figures come from current published pricing and should be checked
 against the Paystack dashboard before launch.
 
-**VAT (still to confirm with an accountant):** because nothing is added on
-top, VAT on Promoet's service has to come out of the 15%. If VAT applies only
-to the platform fee (Promoet acting as an agent), 15% is VAT-inclusive:
-about 13.95% net revenue and about 1.05% VAT remitted. If the tax authority
-treats Promoet as selling the whole advertising service (principal), VAT
-could apply to the full spend. That is a large difference, so get it settled
-before launch. The ledger already has `vat_payable`.
+**VAT:** nothing is added on top, so VAT on Promoet's service is paid out of
+the **25% commission**. The commission was raised from 15% to 25% so that it
+still leaves a healthy margin in either tax treatment:
+
+| VAT treatment (confirm with an accountant) | VAT on a ₦100,000 budget | Promoet keeps | Creators get |
+|---|---|---|---|
+| VAT on the platform fee only (Promoet acts as an **agent**) | ₦25,000 × 7.5/107.5 ≈ **₦1,744** | ≈ ₦23,256 (**~23.3%**) | ₦75,000 |
+| VAT on the whole advertising service (Promoet acts as **principal**) | ₦100,000 × 7.5/107.5 ≈ **₦6,977** | ≈ ₦18,023 (**~18.0%**) | ₦75,000 |
+
+Creators always receive exactly 75%. The ledger books the VAT portion of each
+billed click into `vat_payable` at billing time, using the rate and treatment
+stored in config, so the remittance is always ready.
 
 **Recommended minimums** (all configurable in admin):
 
 | Setting | Value | Reasoning |
 |---|---|---|
-| Minimum CPC | **₦50** (creator gets ₦42.50) | Below this, creators won't bother posting. The wizard *suggests* ₦100–₦150 and shows a "competitiveness" meter based on live campaigns |
+| Minimum CPC | **₦50** (creator gets ₦37.50) | Below this, creators won't bother posting. The wizard *suggests* ₦100–₦150 and shows a "competitiveness" meter based on live campaigns |
 | Minimum CPA payout | **₦300** per lead/signup, **₦500** or 5% per purchase | Conversions take much more effort than a click |
 | Minimum campaign budget | **₦25,000** for CPC (≥ 500 clicks at the minimum CPC), **₦50,000** for CPA | Enough to spread across 10+ creators and produce meaningful data. Low enough for small Instagram vendors |
 | Minimum wallet top-up | **₦10,000** | Keeps Paystack's fixed ₦100 fee below 1% |
@@ -516,7 +521,7 @@ erDiagram
 | `social_accounts` | id, creator_id, platform (tiktok/ig/x/whatsapp/youtube), handle, followers, verified_at, verification_method |
 | `organizations` | id, name, rc_number (CAC), billing_email, verification_tier (unverified/verified), card_funding_cap_kobo, cpa_approval_rate, api_key_hash, status |
 | `org_members` | org_id, user_id, role (owner/admin/analyst) |
-| `campaigns` | id, org_id, title, slug, description, category, landing_url, billing_model (cpc/cpa/cpm_views), unit_price_kobo, conversion_event, attribution_window_days, approval_window_days, allowed_channels[], requires_beacon, creator_share_bps (8500), max_creator_share_bps, budget_kobo, spent_kobo, daily_cap_kobo, per_creator_daily_click_cap, targeting (jsonb: states, niches, min_level, platforms), starts_at, ends_at, status, arcon_ref, moderation_notes |
+| `campaigns` | id, org_id, title, slug, description, category, landing_url, billing_model (cpc/cpa/cpm_views), unit_price_kobo, conversion_event, attribution_window_days, approval_window_days, allowed_channels[], requires_beacon, creator_share_bps (7500), max_creator_share_bps, budget_kobo, spent_kobo, daily_cap_kobo, per_creator_daily_click_cap, targeting (jsonb: states, niches, min_level, platforms), starts_at, ends_at, status, arcon_ref, moderation_notes |
 | `creatives` | id, campaign_id, type (image/video/caption), storage_key, width, height, duration, status |
 | `quest_claims` | id, campaign_id, creator_id, energy_spent, claimed_at, post_proof_url, proof_status — unique(campaign_id, creator_id) |
 | `referral_links` | id, claim_id, channel (tiktok/ig/x/whatsapp/other), code (unique), status (active/throttled/disabled), quality_score |
@@ -748,7 +753,7 @@ person.
 | # | Topic | Decision | Where |
 |---|---|---|---|
 | 1 | Pricing models | **CPC and CPA at launch.** CPM as "Verified Views" on API-connected accounts in Phase 2 | §5.7, §5.8 |
-| 2 | Fee & charges | 15% taken **from** the advertiser's budget, 85% to creators. Advertiser pays Paystack fees when funding. Creator pays transfer fees when withdrawing | §7.1 |
+| 2 | Fee & charges | **25%** taken **from** the advertiser's budget (raised from 15% so VAT can be paid out of it), 75% to creators. Advertiser pays Paystack fees when funding. Creator pays transfer fees when withdrawing | §7.1 |
 | 3 | Minimums | CPC ₦50, CPA ₦300/₦500, budget ₦25k (CPC) / ₦50k (CPA), top-up ₦10k, withdrawal ₦1k, 10% max share per creator | §7.1 |
 | 4 | Hold period | 7 days for new creators, reduced to 5 and then 3 days by level and clean record. CPA follows the advertiser approval window | §5.5 |
 | 5 | WhatsApp Status | Supported, with separate per-channel links, engaged-click rule, promo codes, stricter caps and quality scores | §5.9 |
@@ -757,7 +762,7 @@ person.
 
 ### Still open
 
-1. **VAT treatment** (agent vs principal) and whether the 15% is VAT-inclusive. Ask an accountant (§7.1).
+1. **VAT treatment** (agent vs principal). The 25% covers either case, but net revenue is ~23% or ~18% depending on the answer. Ask an accountant (§7.1).
 2. **Seasonal prize pool:** size and funding source.
 3. **Domains:** the name is **Promoet**. Secure `promoet.ng` / `promoet.com` plus a short redirect domain for tracking links (the doc uses `pmt.ng` as a placeholder; check availability).
 4. **Legal review** of the funds-holding structure, ARCON obligations and terms of service (§11).
