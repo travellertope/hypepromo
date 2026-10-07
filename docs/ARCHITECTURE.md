@@ -3,7 +3,7 @@
 > Status: **Planning draft v2** (2026-10-06): owner decisions applied (see §16)
 > Source: the single-file prototype in [`prototype/index.html`](../prototype/index.html) (built under the working name "HypeQuest")
 
-Promoet is a two-sided marketplace for Nigeria. **Advertisers** fund
+Promoet is a two-sided marketplace. **Advertisers** fund
 campaigns that pay **per verified click (CPC)** or **per conversion (CPA)**.
 **Micro-influencers ("creators")** pick up campaigns as *quests*, post the ad
 assets on the platforms they choose (WhatsApp Status, X, Facebook, Instagram
@@ -126,7 +126,7 @@ flowchart TB
 | Storage | Supabase Storage for creatives (with its CDN). Move hot media to Cloudflare R2 if egress costs grow | One less vendor at launch |
 | Payments | **Paystack** (primary), Flutterwave (fallback) | NGN card / transfer / USSD collection, NUBAN resolve, bulk transfers |
 | KYC | Smile ID / Dojah / Prembly | BVN/NIN check and selfie liveness |
-| Messaging | Termii (SMS + WhatsApp OTP), Resend (email), Web Push (VAPID) | Termii has good Nigerian delivery |
+| Messaging | Resend (email OTP), Web Push (VAPID) | Email OTP via Supabase, no SMS dependency |
 | Observability | OpenTelemetry → Grafana/Sentry, structured logs | Trace a click from the edge through scoring to the ledger |
 | Infra-as-code | Terraform (Cloudflare, DB, Redis), GitHub Actions CI | Repeatable environments |
 
@@ -259,10 +259,10 @@ Each rule adds to a risk score or forces a verdict. The output is
 | 8 | Per-creator daily cap per campaign (set by the advertiser) is reached | `not_billable` |
 | 9 | Optional: landing-page beacon (advertiser adds a JS snippet) confirms the page actually loaded or stayed open more than 3 s | Turns "click" into "engaged click", which supports a higher CPC tier |
 
-**Nigeria-specific caution:** MTN, Airtel and Glo use **carrier-grade NAT**,
-so thousands of real people share one public IP. **Never deduplicate on IP
-alone.** Treat IP as a weak signal and combine it with the cookie, UA and TLS
-fingerprint. In-app browsers (Instagram, Facebook, WhatsApp, Telegram) often drop cookies
+**Carrier-grade NAT caution:** Many mobile carriers use CGN, so thousands of
+real people can share one public IP. **Never deduplicate on IP alone.** Treat
+IP as a weak signal and combine it with the cookie, UA and TLS fingerprint.
+In-app browsers (Instagram, Facebook, WhatsApp, Telegram) often drop cookies
 between sessions, so the fingerprint hash is the fallback.
 
 Every verdict stores its reasons and the rule-set version. Clicks can be
@@ -375,7 +375,7 @@ its own data.
 
 ### 5.9 WhatsApp Status and Telegram
 
-WhatsApp Status is Nigeria's largest "feed", and Telegram channels are popular
+WhatsApp Status is a major social "feed", and Telegram channels are popular
 too. On both, Promoet can't see who the post reached. The
 key point is that **for CPC and CPA campaigns, nothing needs to be verified
 about the post itself.** Promoet pays for clicks and conversions that come
@@ -655,7 +655,7 @@ user, per IP, plus stricter limits on OTP and payout endpoints).
 
 ## 10. Security
 
-- **Auth:** phone OTP (Termii) as the main login, which suits Nigeria. Optional email/password and Google. Server-side sessions in Redis. **2FA is required** for advertiser owners and all admins.
+- **Auth:** email OTP as the main login. Optional email/password and Google. **2FA is required** for advertiser owners and all admins.
 - **RBAC:** `creator`, `org:owner|admin|analyst`, `admin:ops|finance|super`. Payout approval and ledger adjustments need the `finance` role, and adjustments above a threshold need **two-person approval**.
 - **Money safety:** idempotency keys everywhere, every money mutation in a DB transaction, webhook signature checks, a daily reconciliation job, an append-only audit log, and no `UPDATE`/`DELETE` on journal tables (enforced by DB grants).
 - **Account takeover:** a new bank account or new device triggers a cooling-off period before withdrawals. Alerts on login from a new device. SIM-swap risk is reduced by requiring KYC selfie re-verification for large withdrawals.
@@ -664,12 +664,12 @@ user, per IP, plus stricter limits on OTP and payout endpoints).
 
 ---
 
-## 11. Compliance & policy (Nigeria) — get legal advice before launch
+## 11. Compliance & policy — get legal advice before launch
 
 | Area | Implication |
 |---|---|
 | **NDPA 2023 / NDPC** | Privacy notice, lawful basis, consent for marketing, retention schedule, DPO, data-breach process. Possibly registration as a data controller of major importance |
-| **ARCON** (Advertising Regulatory Council) | Ads shown in Nigeria may need pre-exposure vetting. Store `arcon_ref` per campaign and make advertisers attest to compliance in the ToS |
+| **Advertising regulations** | Ads may need pre-exposure vetting depending on jurisdiction. Store `ad_reg_ref` per campaign and make advertisers attest to compliance in the ToS |
 | **Influencer disclosure** | Make creators include `#ad`/`#sponsored` (show it in caption templates, check it in post-proof review) |
 | **Holding funds** | Don't operate as an unlicensed wallet or e-money issuer. Keep funds with the licensed PSP (Paystack/Flutterwave) and present balances as earned receivables. Confirm the structure with counsel and the PSP |
 | **KYC / AML** | BVN or NIN check before the first withdrawal. Tiered limits. Sanctions/PEP screening through the KYC provider for advertisers |
