@@ -8,7 +8,7 @@ function SlowHint() {
   const [show, setShow] = useState(false)
   useEffect(() => { const t = setTimeout(() => setShow(true), 4000); return () => clearTimeout(t) }, [])
   if (!show) return null
-  return <p className="text-cyber-muted text-xs animate-pulse">Connecting to server…</p>
+  return <p className="text-cyber-muted text-xs animate-pulse">Getting ready… please hold on</p>
 }
 
 const NICHES = ['Fashion', 'Tech', 'Comedy', 'Music', 'Sports', 'Food', 'Travel', 'Finance', 'Health', 'Gaming']
@@ -183,7 +183,7 @@ export default function ProfilePage() {
 
         {slowConn && saving && (
           <p className="text-cyber-muted text-xs text-center -mt-1 animate-pulse">
-            First request takes a moment to connect — hang tight
+            Getting ready… please hold on
           </p>
         )}
         {saveError && (
