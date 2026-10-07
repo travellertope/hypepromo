@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error && data.user) {
-      const role = data.user.user_metadata?.['role'] as string | undefined
+      const role = (data.user.user_metadata?.['role'] as string | undefined) ?? searchParams.get('role') ?? undefined
       const dest =
         role === 'creator' ? '/creator' :
         role === 'advertiser' ? '/advertiser' :
