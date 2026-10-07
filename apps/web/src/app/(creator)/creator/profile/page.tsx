@@ -12,6 +12,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<CreatorProfile | null>(null)
   const [socials, setSocials] = useState<Social[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [handle, setHandle] = useState('')
@@ -20,6 +21,7 @@ export default function ProfilePage() {
   const [niches, setNiches] = useState<string[]>([])
 
   useEffect(() => {
+    if (!loading) return
     Promise.all([
       api.creator.getProfile().catch(() => null),
       api.creator.getSocials().catch(() => null),
@@ -33,8 +35,11 @@ export default function ProfilePage() {
       }
       setSocials(s?.items ?? [])
       setLoading(false)
+    }).catch(() => {
+      setLoadError(true)
+      setLoading(false)
     })
-  }, [])
+  }, [loading])
 
   async function handleSave() {
     setSaving(true)
@@ -62,6 +67,21 @@ export default function ProfilePage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-6 text-center">
+        <p className="text-cyber-text font-semibold">Couldn't reach the server</p>
+        <p className="text-cyber-muted text-sm">The API may be waking up — try again in a moment.</p>
+        <button
+          onClick={() => { setLoadError(false); setLoading(true); }}
+          className="px-6 py-2.5 rounded-xl bg-cyber-accent text-white text-sm font-bold"
+        >
+          Retry
+        </button>
       </div>
     )
   }

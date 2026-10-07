@@ -10,6 +10,8 @@
   --cyber-border: #d1c4e9;
   --cyber-text: #0a0314;
   --cyber-muted: #6b5a8a;
+  --cyber-neon: #0d7a7a;   /* dark teal — readable on white */
+  --cyber-accent: #d6005f; /* deeper pink — readable on white */
 }
 
 /* ── Dark theme ──────────────────────────────────────────────────────────── */
@@ -19,6 +21,8 @@
   --cyber-border: #3b186b;
   --cyber-text: #ffffff;
   --cyber-muted: #c4b5d8;
+  --cyber-neon: #00f0ff;
+  --cyber-accent: #ff007f;
 }
 
 @layer base {

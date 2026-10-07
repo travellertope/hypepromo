@@ -11,16 +11,20 @@ async function getToken(): Promise<string | null> {
 async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
+  timeoutMs = 12000,
 ): Promise<T> {
   const token = await getToken()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
+    signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init.headers ?? {}),
     },
-  })
+  }).finally(() => clearTimeout(timer))
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { message?: string }
