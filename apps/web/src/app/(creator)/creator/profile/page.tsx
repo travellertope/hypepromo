@@ -41,6 +41,7 @@ export default function ProfilePage() {
       setLoadError(true)
       setLoading(false)
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading])
 
   async function handleSave() {
@@ -53,7 +54,12 @@ export default function ProfilePage() {
       setSaveOk(true)
       setTimeout(() => setSaveOk(false), 3000)
     } catch (e) {
-      setSaveError((e as Error).message ?? 'Failed to save. Please try again.')
+      const msg = (e as Error).message ?? ''
+      setSaveError(
+        msg.includes('aborted') || msg.includes('abort')
+          ? 'Server is waking up — please wait a moment and try again.'
+          : msg || 'Failed to save. Please try again.'
+      )
     } finally {
       setSaving(false)
     }
@@ -81,7 +87,7 @@ export default function ProfilePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-6 text-center">
         <p className="text-cyber-text font-semibold">Couldn't reach the server</p>
-        <p className="text-cyber-muted text-sm">The API may be waking up — try again in a moment.</p>
+        <p className="text-cyber-muted text-sm">The server is waking up from sleep — wait ~30 seconds and retry.</p>
         <button
           onClick={() => { setLoadError(false); setLoading(true); }}
           className="px-6 py-2.5 rounded-xl bg-cyber-accent text-white text-sm font-bold"

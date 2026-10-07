@@ -11,7 +11,7 @@ async function getToken(): Promise<string | null> {
 async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
-  timeoutMs = 30000,
+  timeoutMs = 55000,
 ): Promise<T> {
   const token = await getToken()
   const controller = new AbortController()
@@ -30,6 +30,7 @@ async function apiFetch<T>(
     const body = await res.json().catch(() => ({})) as { message?: string }
     throw new ApiError(res.status, body.message ?? res.statusText)
   }
+
 
   return res.json() as Promise<T>
 }
