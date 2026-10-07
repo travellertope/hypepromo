@@ -215,7 +215,8 @@ function LoginForm() {
                             required
                             autoComplete="email"
                             autoFocus
-                            className="w-full pl-11 pr-4 py-3.5 bg-cyber-dark/50 border border-cyber-border rounded-2xl text-cyber-text placeholder-cyber-muted text-sm focus:outline-none focus:border-cyber-accent focus:ring-4 focus:ring-cyber-accent/15 transition-all"
+                            className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-cyber-border rounded-2xl text-cyber-text [color-scheme:light_dark] placeholder-cyber-muted text-sm focus:outline-none focus:border-cyber-accent focus:ring-4 focus:ring-cyber-accent/15 transition-all"
+                            style={{ color: 'var(--cyber-text)' }}
                           />
                         </div>
                       </div>
@@ -267,7 +268,8 @@ function LoginForm() {
                           onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
                           disabled={loading}
                           autoComplete="one-time-code"
-                          className="w-full px-4 py-3.5 bg-cyber-dark/50 border border-cyber-border rounded-2xl text-cyber-text text-center text-2xl font-bold tracking-widest placeholder-cyber-muted focus:outline-none focus:border-cyber-accent focus:ring-4 focus:ring-cyber-accent/15 transition-all disabled:opacity-50"
+                          className="w-full px-4 py-3.5 bg-white/10 border border-cyber-border rounded-2xl text-cyber-text text-center text-2xl font-bold tracking-widest placeholder-cyber-muted focus:outline-none focus:border-cyber-accent focus:ring-4 focus:ring-cyber-accent/15 transition-all disabled:opacity-50"
+                          style={{ color: 'var(--cyber-text)' }}
                         />
                       </div>
 
