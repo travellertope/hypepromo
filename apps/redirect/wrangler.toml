@@ -4,11 +4,10 @@ compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
 # ── KV namespace ─────────────────────────────────────────────────────────────
-# Run `wrangler kv namespace create LINKS` then fill in the IDs below.
 [[kv_namespaces]]
 binding = "LINKS"
-id = "addec1128ea94f97a5d2123d112efb95"
-preview_id = "addec1128ea94f97a5d2123d112efb95"
+id = "854cec360ba74fa1b26bec8a9d7db6db"
+preview_id = "854cec360ba74fa1b26bec8a9d7db6db"
 
 # ── Queue producer ────────────────────────────────────────────────────────────
 # Run `wrangler queues create promoet-clicks` then fill below.
