@@ -7,10 +7,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [step, setStep] = useState<'email' | 'otp'>('email')
-  const [otp, setOtp] = useState(['', '', '', '', '', '', '', ''])
+  const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const otpRef = useRef<HTMLInputElement | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
   const role = searchParams.get('role') ?? 'creator'
@@ -34,22 +34,12 @@ function LoginForm() {
 
     setStep('otp')
     setLoading(false)
-    setTimeout(() => inputRefs.current[0]?.focus(), 100)
+    setTimeout(() => otpRef.current?.focus(), 100)
   }
 
-  function handleDigit(index: number, value: string) {
-    const digit = value.replace(/\D/g, '').slice(-1)
-    const next = [...otp]
-    next[index] = digit
-    setOtp(next)
-    if (digit && index < 7) inputRefs.current[index + 1]?.focus()
-    if (next.every(Boolean)) verifyCode(next.join(''))
-  }
-
-  function handleKeyDown(index: number, e: React.KeyboardEvent) {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus()
-    }
+  function handleOtpInput(value: string) {
+    const digits = value.replace(/\D/g, '')
+    setOtp(digits)
   }
 
   async function verifyCode(code: string) {
@@ -65,8 +55,8 @@ function LoginForm() {
 
     if (verifyError) {
       setError('Invalid or expired code. Try again.')
-      setOtp(['', '', '', '', '', '', '', ''])
-      inputRefs.current[0]?.focus()
+      setOtp('')
+      otpRef.current?.focus()
       setLoading(false)
       return
     }
@@ -79,31 +69,37 @@ function LoginForm() {
       <div className="glass-panel rounded-3xl p-8 w-full max-w-sm text-center">
         <h1 className="font-extrabold text-2xl text-cyber-neon mb-1">Enter your code</h1>
         <p className="text-cyber-muted text-sm mb-6">
-          We emailed an 8-digit code to <span className="text-cyber-text font-medium">{email}</span>
+          We emailed a code to <span className="text-cyber-text font-medium">{email}</span>
         </p>
 
-        <div className="flex justify-center gap-2 mb-4">
-          {otp.map((digit, i) => (
-            <input
-              key={i}
-              ref={(el) => { inputRefs.current[i] = el }}
-              type="tel"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleDigit(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              disabled={loading}
-              className="w-11 h-14 rounded-xl border border-cyber-border bg-cyber-card text-center text-cyber-text text-xl font-bold focus:border-cyber-neon focus:outline-none disabled:opacity-50 transition"
-            />
-          ))}
-        </div>
+        <form onSubmit={(e) => { e.preventDefault(); if (otp.length >= 4) verifyCode(otp) }} className="flex flex-col gap-4">
+          <input
+            ref={otpRef}
+            type="tel"
+            inputMode="numeric"
+            placeholder="Enter code"
+            value={otp}
+            onChange={(e) => handleOtpInput(e.target.value)}
+            disabled={loading}
+            autoComplete="one-time-code"
+            className="rounded-2xl border border-cyber-border focus:border-cyber-neon bg-transparent px-4 py-3 text-cyber-text text-center text-2xl font-bold tracking-widest placeholder-cyber-muted outline-none transition disabled:opacity-50"
+          />
 
-        {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
-        {loading && <p className="text-cyber-muted text-sm animate-pulse">Verifying…</p>}
+          {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={loading || otp.length < 4}
+            className="rounded-2xl bg-cyber-accent text-white font-bold py-3 disabled:opacity-50 transition hover:opacity-90"
+          >
+            {loading ? 'Verifying…' : 'Verify'}
+          </button>
+        </form>
+
+        {loading && <p className="text-cyber-muted text-sm animate-pulse mt-2">Verifying…</p>}
 
         <button
-          onClick={() => { setStep('email'); setOtp(['', '', '', '', '', '', '', '']); setError(null) }}
+          onClick={() => { setStep('email'); setOtp(''); setError(null) }}
           className="mt-4 text-xs text-cyber-muted underline"
         >
           Use a different email
@@ -118,7 +114,7 @@ function LoginForm() {
         {role === 'advertiser' ? 'Advertiser sign in' : 'Creator sign in'}
       </h1>
       <p className="text-cyber-muted text-sm mb-6">
-        Enter your email — we&apos;ll send an 8-digit code.
+        Enter your email — we&apos;ll send a login code.
       </p>
 
       <form onSubmit={handleSend} className="flex flex-col gap-4">
