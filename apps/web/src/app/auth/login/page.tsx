@@ -3,6 +3,7 @@
 import { Suspense, useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useTheme } from '@/components/ThemeProvider'
 
 function Toast({ title, message, type, visible }: { title: string; message: string; type: 'success' | 'error' | 'info'; visible: boolean }) {
   const icons = {
@@ -40,6 +41,7 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const role = searchParams.get('role') ?? 'creator'
   const isAdvertiser = role === 'advertiser'
+  const { theme, toggle } = useTheme()
 
   function showToast(title: string, message: string, type: 'success' | 'error' | 'info' = 'success') {
     setToast({ title, message, type, visible: true })
@@ -154,6 +156,17 @@ function LoginForm() {
               <svg className="w-3.5 h-3.5 text-cyber-neon" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
               {isAdvertiser ? 'Creator? Switch' : 'Advertiser? Switch'}
             </a>
+            <button
+              onClick={toggle}
+              aria-label="Toggle theme"
+              className="w-9 h-9 rounded-full border border-cyber-border bg-cyber-card/60 hover:bg-cyber-card flex items-center justify-center text-cyber-muted hover:text-cyber-text transition-all"
+            >
+              {theme === 'dark' ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+              )}
+            </button>
           </div>
         </header>
 
