@@ -5,12 +5,14 @@ import { createContext, useContext, useEffect, useState } from 'react'
 type Theme = 'light' | 'dark'
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
-  theme: 'light',
+  theme: 'dark',
   toggle: () => {},
 })
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light')
+  // Dark is the default; the inline script in layout.tsx has already applied any
+  // saved preference to the DOM, so this only re-syncs React state to match.
+  const [theme, setTheme] = useState<Theme>('dark')
 
   useEffect(() => {
     try {
@@ -23,7 +25,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   function toggle() {
-    const next = theme === 'light' ? 'dark' : 'light'
+    const next = theme === 'dark' ? 'light' : 'dark'
     setTheme(next)
     document.documentElement.setAttribute('data-theme', next)
     try { localStorage.setItem('theme', next) } catch {}

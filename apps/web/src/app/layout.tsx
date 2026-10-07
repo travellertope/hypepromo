@@ -28,9 +28,20 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
+// Runs before first paint so a saved preference never flashes the default theme.
+const themeInit = `try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}`
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${inter.variable}`}>
+    <html
+      lang="en"
+      data-theme="dark"
+      suppressHydrationWarning
+      className={`${spaceGrotesk.variable} ${inter.variable}`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
       <body>
         <ThemeProvider>
           {children}
