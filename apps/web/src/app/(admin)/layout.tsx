@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 const NAV = [
   { href: '/admin/campaigns', label: 'Campaigns' },
@@ -14,13 +15,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside className="w-48 shrink-0 border-r border-cyber-border bg-cyber-card/80 min-h-screen sticky top-0 h-screen overflow-y-auto">
         <div className="px-4 py-5">
-          <p className="text-xs font-bold text-cyber-accent uppercase tracking-widest mb-6">Admin</p>
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-xs font-bold text-cyber-accent uppercase tracking-widest">Admin</p>
+            <ThemeToggle />
+          </div>
           <nav className="flex flex-col gap-1">
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="px-3 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-all"
+                className="px-3 py-2 rounded-lg text-sm text-cyber-muted hover:text-cyber-text hover:bg-black/5 transition-all"
               >
                 {item.label}
               </Link>

@@ -1,11 +1,16 @@
+import { ThemeToggle } from '@/components/ThemeToggle'
+
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4">
+    <main className="min-h-screen flex flex-col items-center justify-center px-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="glass-panel rounded-3xl p-10 max-w-md w-full text-center">
         <h1 className="font-extrabold text-3xl tracking-wider text-cyber-neon mb-2">
           Promoet
         </h1>
-        <p className="text-purple-300 text-sm mb-8">
+        <p className="text-cyber-muted text-sm mb-8">
           Earn from every click. Grow your influence.
         </p>
         <div className="flex flex-col gap-3">
@@ -17,7 +22,7 @@ export default function Home() {
           </a>
           <a
             href="/advertiser"
-            className="rounded-2xl border border-cyber-border text-purple-300 font-semibold py-3 px-6 hover:bg-cyber-card transition"
+            className="rounded-2xl border border-cyber-border text-cyber-muted font-semibold py-3 px-6 hover:bg-cyber-card transition"
           >
             I&apos;m an Advertiser
           </a>

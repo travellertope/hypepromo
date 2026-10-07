@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function AdvertiserLayout({ children }: { children: ReactNode }) {
   return (
@@ -7,9 +8,9 @@ export default function AdvertiserLayout({ children }: { children: ReactNode }) 
       <header className="border-b border-cyber-border bg-cyber-card/80 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/advertiser" className="font-black text-lg text-cyber-neon tracking-tight">
-            Promoet <span className="text-white/40 text-sm font-normal">Advertiser</span>
+            Promoet <span className="text-cyber-muted text-sm font-normal">Advertiser</span>
           </Link>
-          <nav className="flex gap-1">
+          <nav className="flex gap-1 items-center">
             {[
               { href: '/advertiser', label: 'Campaigns' },
               { href: '/advertiser/stats', label: 'Stats' },
@@ -18,11 +19,12 @@ export default function AdvertiserLayout({ children }: { children: ReactNode }) 
               <Link
                 key={item.href}
                 href={item.href}
-                className="px-3 py-1.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-all"
+                className="px-3 py-1.5 rounded-lg text-sm text-cyber-muted hover:text-cyber-text hover:bg-black/5 transition-all"
               >
                 {item.label}
               </Link>
             ))}
+            <ThemeToggle className="ml-2" />
           </nav>
         </div>
       </header>

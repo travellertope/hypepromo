@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ThemeToggle } from './ThemeToggle'
 
 interface NavItem {
   href: string
@@ -21,14 +22,17 @@ export function BottomNav({ items = creatorItems }: { items?: NavItem[] }) {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 bg-cyber-card border-t border-cyber-border safe-area-inset-bottom z-50">
-      <div className="flex">
+      <div className="flex items-stretch">
+        <div className="flex items-center px-2 border-r border-cyber-border">
+          <ThemeToggle />
+        </div>
         {items.map((item) => {
           const active = pathname === item.href || (item.href !== '/creator' && pathname.startsWith(item.href))
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex-1 flex flex-col items-center py-2 text-xs transition-colors ${active ? 'text-cyber-neon' : 'text-white/40'}`}
+              className={`flex-1 flex flex-col items-center py-2 text-xs transition-colors ${active ? 'text-cyber-neon' : 'text-cyber-muted'}`}
             >
               <svg className="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />

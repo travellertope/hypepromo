@@ -8,7 +8,7 @@ export const creators = pgTable('creators', {
   id: uuid('id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   handle: text('handle').notNull().unique(), // promoet.com/@handle
   bio: text('bio'),
-  state: text('state'), // Nigerian state e.g. "Lagos"
+  state: text('state'), // e.g. "Lagos"
   niches: text('niches').array(),
   tier: tierEnum('tier').notNull().default('starter'),
   xp: integer('xp').notNull().default(0),

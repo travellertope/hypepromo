@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
+  darkMode: ['class', '[data-theme="dark"]'],
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
@@ -16,11 +17,13 @@ const config: Config = {
           900: '#701a75',
         },
         cyber: {
-          dark: '#0a0314',
-          card: '#140728',
-          border: '#3b186b',
+          dark: 'var(--cyber-dark)',
+          card: 'var(--cyber-card)',
+          border: 'var(--cyber-border)',
           neon: '#00f0ff',
           accent: '#ff007f',
+          text: 'var(--cyber-text)',
+          muted: 'var(--cyber-muted)',
         },
       },
       boxShadow: {

@@ -3,14 +3,40 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light theme (default) ───────────────────────────────────────────────── */
+:root {
+  --cyber-dark: #ffffff;
+  --cyber-card: #f4f4f8;
+  --cyber-border: #d1c4e9;
+  --cyber-text: #0a0314;
+  --cyber-muted: #6b5a8a;
+}
+
+/* ── Dark theme ──────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --cyber-dark: #0a0314;
+  --cyber-card: #140728;
+  --cyber-border: #3b186b;
+  --cyber-text: #ffffff;
+  --cyber-muted: #c4b5d8;
+}
+
 @layer base {
   body {
-    @apply bg-cyber-dark text-white;
+    background-color: var(--cyber-dark);
+    color: var(--cyber-text);
   }
 }
 
 @layer components {
+  /* glass-panel adapts to both themes */
   .glass-panel {
-    @apply bg-white/5 backdrop-blur-md border border-cyber-border;
+    background-color: var(--cyber-card);
+    border: 1px solid var(--cyber-border);
+  }
+
+  [data-theme="dark"] .glass-panel {
+    background-color: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
   }
 }
