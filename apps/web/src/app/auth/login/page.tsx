@@ -176,8 +176,8 @@ function LoginForm() {
 
             {/* Role badge */}
             <div className="text-center mb-6">
-              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-cyber-neon/10 text-cyber-neon border border-cyber-neon/30">
-                <span className="w-2 h-2 rounded-full bg-cyber-neon animate-ping" />
+              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-cyber-neon/10 text-teal-700 dark:text-cyber-neon border border-cyber-neon/30">
+                <span className="w-2 h-2 rounded-full bg-teal-600 dark:bg-cyber-neon animate-ping" />
                 {isAdvertiser ? 'Brand & Agency Portal' : 'Creator Portal'}
               </span>
             </div>
