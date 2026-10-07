@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [step, setStep] = useState<'email' | 'otp'>('email')
-  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [otp, setOtp] = useState(['', '', '', '', '', '', '', ''])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -42,7 +42,7 @@ function LoginForm() {
     const next = [...otp]
     next[index] = digit
     setOtp(next)
-    if (digit && index < 5) inputRefs.current[index + 1]?.focus()
+    if (digit && index < 7) inputRefs.current[index + 1]?.focus()
     if (next.every(Boolean)) verifyCode(next.join(''))
   }
 
@@ -65,7 +65,7 @@ function LoginForm() {
 
     if (verifyError) {
       setError('Invalid or expired code. Try again.')
-      setOtp(['', '', '', '', '', ''])
+      setOtp(['', '', '', '', '', '', '', ''])
       inputRefs.current[0]?.focus()
       setLoading(false)
       return
@@ -79,7 +79,7 @@ function LoginForm() {
       <div className="glass-panel rounded-3xl p-8 w-full max-w-sm text-center">
         <h1 className="font-extrabold text-2xl text-cyber-neon mb-1">Enter your code</h1>
         <p className="text-cyber-muted text-sm mb-6">
-          We emailed a 6-digit code to <span className="text-cyber-text font-medium">{email}</span>
+          We emailed an 8-digit code to <span className="text-cyber-text font-medium">{email}</span>
         </p>
 
         <div className="flex justify-center gap-2 mb-4">
@@ -103,7 +103,7 @@ function LoginForm() {
         {loading && <p className="text-cyber-muted text-sm animate-pulse">Verifying…</p>}
 
         <button
-          onClick={() => { setStep('email'); setOtp(['', '', '', '', '', '']); setError(null) }}
+          onClick={() => { setStep('email'); setOtp(['', '', '', '', '', '', '', '']); setError(null) }}
           className="mt-4 text-xs text-cyber-muted underline"
         >
           Use a different email
@@ -118,7 +118,7 @@ function LoginForm() {
         {role === 'advertiser' ? 'Advertiser sign in' : 'Creator sign in'}
       </h1>
       <p className="text-cyber-muted text-sm mb-6">
-        Enter your email — we&apos;ll send a 6-digit code.
+        Enter your email — we&apos;ll send an 8-digit code.
       </p>
 
       <form onSubmit={handleSend} className="flex flex-col gap-4">
