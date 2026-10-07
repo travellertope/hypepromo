@@ -25,15 +25,15 @@ export function XpBar({ xp, level, streakDays }: XpBarProps) {
   return (
     <div className="px-4 py-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs text-white/60">
+        <span className="text-xs text-cyber-muted">
           Lv.<span className="text-cyber-neon font-bold">{level}</span>
         </span>
-        <span className="text-xs text-white/40">{xp.toLocaleString()} XP</span>
+        <span className="text-xs text-cyber-muted">{xp.toLocaleString()} XP</span>
         {streakDays > 0 && (
           <span className="text-xs text-orange-400 font-semibold">🔥 {streakDays}d streak</span>
         )}
       </div>
-      <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-cyber-card overflow-hidden">
         <div
           className="h-full rounded-full bg-gradient-to-r from-cyber-neon to-cyber-accent transition-all"
           style={{ width: `${progress}%` }}

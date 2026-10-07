@@ -38,7 +38,7 @@ export default function CreatorDashboard() {
   if (!profile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4">
-        <p className="text-white/60">Complete your profile to get started</p>
+        <p className="text-cyber-muted">Complete your profile to get started</p>
         <Link
           href="/creator/profile"
           className="px-6 py-3 rounded-xl bg-cyber-neon text-black font-bold"
@@ -55,8 +55,8 @@ export default function CreatorDashboard() {
     <div className="max-w-lg mx-auto">
       {/* Header */}
       <div className="px-4 pt-8 pb-2">
-        <p className="text-white/50 text-sm">Welcome back,</p>
-        <h1 className="text-2xl font-black text-white">@{profile.handle}</h1>
+        <p className="text-cyber-muted text-sm">Welcome back,</p>
+        <h1 className="text-2xl font-black text-cyber-text">@{profile.handle}</h1>
         <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-cyber-accent/20 border border-cyber-accent/40">
           <span className="text-xs text-cyber-accent font-semibold uppercase">{profile.tier}</span>
         </div>
@@ -67,14 +67,14 @@ export default function CreatorDashboard() {
       {/* Energy bar */}
       <div className="mx-4 mb-4 glass-panel rounded-2xl p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-white/70">Energy</span>
-          <span className="text-xs text-white/40">{profile.energyMax - profile.energyUsed} / {profile.energyMax}</span>
+          <span className="text-sm font-semibold text-cyber-muted">Energy</span>
+          <span className="text-xs text-cyber-muted">{profile.energyMax - profile.energyUsed} / {profile.energyMax}</span>
         </div>
         <div className="flex gap-1.5">
           {Array.from({ length: profile.energyMax }).map((_, i) => (
             <div
               key={i}
-              className={`flex-1 h-3 rounded-sm ${i < profile.energyMax - profile.energyUsed ? 'bg-cyber-neon' : 'bg-white/10'}`}
+              className={`flex-1 h-3 rounded-sm ${i < profile.energyMax - profile.energyUsed ? 'bg-cyber-neon' : 'bg-cyber-card'}`}
             />
           ))}
         </div>
@@ -84,16 +84,16 @@ export default function CreatorDashboard() {
       {wallet && (
         <div className="mx-4 mb-4 glass-panel rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-white/70">Wallet</h2>
+            <h2 className="text-sm font-semibold text-cyber-muted">Wallet</h2>
             <Link href="/creator/wallet" className="text-xs text-cyber-neon">View all →</Link>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/5 rounded-xl p-3">
-              <p className="text-xs text-white/40 mb-1">Pending</p>
+            <div className="bg-cyber-card rounded-xl p-3">
+              <p className="text-xs text-cyber-muted mb-1">Pending</p>
               <p className="text-lg font-black text-yellow-400">{fmt(wallet.pendingKobo)}</p>
             </div>
-            <div className="bg-white/5 rounded-xl p-3">
-              <p className="text-xs text-white/40 mb-1">Available</p>
+            <div className="bg-cyber-card rounded-xl p-3">
+              <p className="text-xs text-cyber-muted mb-1">Available</p>
               <p className="text-lg font-black text-cyber-neon">{fmt(wallet.availableKobo)}</p>
             </div>
           </div>
@@ -103,12 +103,12 @@ export default function CreatorDashboard() {
       {/* Quest previews */}
       <div className="mx-4 mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-white/70">Active Quests</h2>
+          <h2 className="text-sm font-semibold text-cyber-muted">Active Quests</h2>
           <Link href="/creator/quests" className="text-xs text-cyber-neon">See all →</Link>
         </div>
         <div className="flex flex-col gap-2">
           {quests.length === 0 && (
-            <p className="text-white/40 text-sm text-center py-4">No quests yet — check back soon!</p>
+            <p className="text-cyber-muted text-sm text-center py-4">No quests yet — check back soon!</p>
           )}
           {quests.map((q) => (
             <Link
@@ -118,11 +118,11 @@ export default function CreatorDashboard() {
             >
               <div>
                 <p className="font-semibold text-sm">{q.campaign.name}</p>
-                <p className="text-xs text-white/40 mt-0.5">{q.campaign.platforms.join(', ')}</p>
+                <p className="text-xs text-cyber-muted mt-0.5">{q.campaign.platforms.join(', ')}</p>
               </div>
               <div className="text-right">
                 <p className="text-cyber-neon font-black">{fmt(q.campaign.creatorUnitKobo)}</p>
-                <p className="text-xs text-white/40 capitalize">{q.campaign.type}</p>
+                <p className="text-xs text-cyber-muted capitalize">{q.campaign.type}</p>
               </div>
             </Link>
           ))}

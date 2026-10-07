@@ -89,10 +89,10 @@ export default function WalletPage() {
           {[
             { label: 'Pending', val: wallet.pendingKobo, color: 'text-yellow-400' },
             { label: 'Available', val: wallet.availableKobo, color: 'text-cyber-neon' },
-            { label: 'Lifetime', val: wallet.lifetimeEarningsKobo, color: 'text-white' },
+            { label: 'Lifetime', val: wallet.lifetimeEarningsKobo, color: 'text-cyber-text' },
           ].map((item) => (
             <div key={item.label} className="glass-panel rounded-xl p-3 text-center">
-              <p className="text-xs text-white/40 mb-1">{item.label}</p>
+              <p className="text-xs text-cyber-muted mb-1">{item.label}</p>
               <p className={`text-sm font-black ${item.color}`}>{fmt(item.val)}</p>
             </div>
           ))}
@@ -105,7 +105,7 @@ export default function WalletPage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${tab === t ? 'bg-cyber-neon text-black' : 'text-white/50'}`}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${tab === t ? 'bg-cyber-neon text-black' : 'text-cyber-muted'}`}
           >
             {t}
           </button>
@@ -115,13 +115,13 @@ export default function WalletPage() {
       {tab === 'earnings' && (
         <div className="flex flex-col gap-2">
           {withdrawals.length === 0 && (
-            <p className="text-center text-white/40 py-8">No withdrawals yet</p>
+            <p className="text-center text-cyber-muted py-8">No withdrawals yet</p>
           )}
           {withdrawals.map((w) => (
             <div key={w.id} className="glass-panel rounded-xl p-4 flex items-center justify-between">
               <div>
                 <p className="font-semibold">{fmt(w.amountKobo)}</p>
-                <p className="text-xs text-white/40">{new Date(w.createdAt).toLocaleDateString('en-NG')}</p>
+                <p className="text-xs text-cyber-muted">{new Date(w.createdAt).toLocaleDateString('en-NG')}</p>
               </div>
               <span className={`text-xs px-2 py-1 rounded-full font-semibold capitalize ${
                 w.status === 'approved' ? 'bg-green-500/20 text-green-400' :
@@ -139,7 +139,7 @@ export default function WalletPage() {
         <div className="glass-panel rounded-2xl p-5 flex flex-col gap-4">
           {!bank?.bankAccountNumber ? (
             <div className="text-center py-4">
-              <p className="text-white/60 text-sm mb-3">Set up a bank account first</p>
+              <p className="text-cyber-muted text-sm mb-3">Set up a bank account first</p>
               <button onClick={() => setTab('bank')} className="px-4 py-2 rounded-xl bg-cyber-accent text-white text-sm font-bold">
                 Add Bank Account
               </button>
@@ -147,17 +147,18 @@ export default function WalletPage() {
           ) : (
             <>
               <div>
-                <p className="text-xs text-white/50 mb-1">Bank: {bank.bankCode} • {bank.bankAccountNumber}</p>
+                <p className="text-xs text-cyber-muted mb-1">Bank: {bank.bankCode} • {bank.bankAccountNumber}</p>
                 {bank.bankAccountName && <p className="text-sm text-white/80">{bank.bankAccountName}</p>}
               </div>
               <div>
-                <label className="block text-xs text-white/50 mb-1">Amount (₦)</label>
+                <label className="block text-xs text-cyber-muted mb-1">Amount (₦)</label>
                 <input
                   type="number"
                   placeholder="1000"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full bg-white/5 border border-cyber-border rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-cyber-neon"
+                  className="w-full bg-cyber-card border border-cyber-border rounded-xl px-4 py-3 text-cyber-text placeholder-cyber-muted focus:outline-none focus:border-cyber-neon"
+                  style={{ color: 'var(--cyber-text)' }}
                 />
               </div>
               <button
@@ -167,7 +168,7 @@ export default function WalletPage() {
               >
                 {withdrawing ? 'Processing…' : 'Request Withdrawal'}
               </button>
-              <p className="text-xs text-white/30 text-center">Min ₦1,000 · Processed within 24h</p>
+              <p className="text-xs text-cyber-muted text-center">Min ₦1,000 · Processed within 24h</p>
             </>
           )}
         </div>
@@ -176,23 +177,25 @@ export default function WalletPage() {
       {tab === 'bank' && (
         <div className="glass-panel rounded-2xl p-5 flex flex-col gap-4">
           <div>
-            <label className="block text-xs text-white/50 mb-1">Bank Code</label>
+            <label className="block text-xs text-cyber-muted mb-1">Bank Code</label>
             <input
               type="text"
               placeholder="e.g. 058 (GTBank)"
               value={bankCode}
               onChange={(e) => setBankCode(e.target.value)}
-              className="w-full bg-white/5 border border-cyber-border rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-cyber-neon"
+              className="w-full bg-cyber-card border border-cyber-border rounded-xl px-4 py-3 text-cyber-text placeholder-cyber-muted focus:outline-none focus:border-cyber-neon"
+              style={{ color: 'var(--cyber-text)' }}
             />
           </div>
           <div>
-            <label className="block text-xs text-white/50 mb-1">Account Number</label>
+            <label className="block text-xs text-cyber-muted mb-1">Account Number</label>
             <input
               type="text"
               placeholder="10 digits"
               value={acctNum}
               onChange={(e) => setAcctNum(e.target.value)}
-              className="w-full bg-white/5 border border-cyber-border rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-cyber-neon"
+              className="w-full bg-cyber-card border border-cyber-border rounded-xl px-4 py-3 text-cyber-text placeholder-cyber-muted focus:outline-none focus:border-cyber-neon"
+              style={{ color: 'var(--cyber-text)' }}
             />
           </div>
           <button

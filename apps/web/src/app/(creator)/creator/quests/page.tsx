@@ -65,7 +65,7 @@ export default function QuestsPage() {
 
       <div className="flex flex-col gap-3">
         {quests.length === 0 && (
-          <div className="text-center py-16 text-white/40">
+          <div className="text-center py-16 text-cyber-muted">
             <p className="text-4xl mb-3">🏹</p>
             <p>No quests available right now</p>
             <p className="text-sm mt-1">Check back soon!</p>
@@ -78,11 +78,11 @@ export default function QuestsPage() {
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold truncate">{q.campaign.name}</h3>
                 {q.campaign.description && (
-                  <p className="text-xs text-white/50 mt-1 line-clamp-2">{q.campaign.description}</p>
+                  <p className="text-xs text-cyber-muted mt-1 line-clamp-2">{q.campaign.description}</p>
                 )}
                 <div className="flex flex-wrap gap-1 mt-2">
                   {q.campaign.platforms.map((p) => (
-                    <span key={p} className="text-xs bg-white/10 rounded-full px-2 py-0.5">
+                    <span key={p} className="text-xs bg-cyber-card/60 rounded-full px-2 py-0.5">
                       {PLATFORM_ICONS[p] ?? '📱'} {p.replace('_', ' ')}
                     </span>
                   ))}
@@ -90,7 +90,7 @@ export default function QuestsPage() {
               </div>
               <div className="text-right shrink-0">
                 <p className="text-cyber-neon font-black text-lg">{fmt(q.campaign.creatorUnitKobo)}</p>
-                <p className="text-xs text-white/40 capitalize">{q.campaign.type}</p>
+                <p className="text-xs text-cyber-muted capitalize">{q.campaign.type}</p>
               </div>
             </div>
 
@@ -116,7 +116,7 @@ export default function QuestsPage() {
         {hasMore && (
           <button
             onClick={loadMore}
-            className="w-full py-3 rounded-xl border border-cyber-border text-sm text-white/60"
+            className="w-full py-3 rounded-xl border border-cyber-border text-sm text-cyber-muted"
           >
             Load more
           </button>

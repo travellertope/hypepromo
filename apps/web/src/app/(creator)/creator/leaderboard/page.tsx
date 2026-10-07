@@ -7,7 +7,7 @@ function fmt(kobo: number) {
 }
 
 const TIER_COLORS: Record<string, string> = {
-  starter: 'text-white/60',
+  starter: 'text-cyber-muted',
   rising: 'text-green-400',
   pro: 'text-cyber-neon',
   elite: 'text-cyber-accent',
@@ -38,8 +38,8 @@ export default function LeaderboardPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3">
         <p className="text-4xl">🏆</p>
-        <p className="text-white/60">No active season right now</p>
-        <p className="text-white/30 text-sm">Season rankings coming soon</p>
+        <p className="text-cyber-muted">No active season right now</p>
+        <p className="text-cyber-muted text-sm">Season rankings coming soon</p>
       </div>
     )
   }
@@ -51,7 +51,7 @@ export default function LeaderboardPage() {
           <h1 className="text-2xl font-black">Leaderboard</h1>
           <p className="text-xs text-cyber-neon mt-0.5">{data.season.name}</p>
         </div>
-        <div className="text-right text-xs text-white/40">
+        <div className="text-right text-xs text-cyber-muted">
           <p>Ends {new Date(data.season.endsAt).toLocaleDateString('en-NG')}</p>
         </div>
       </div>
@@ -66,21 +66,21 @@ export default function LeaderboardPage() {
               {i < 3 ? (
                 <span className="text-xl">{RANK_MEDALS[i]}</span>
               ) : (
-                <span className="text-sm font-bold text-white/40">#{entry.rank}</span>
+                <span className="text-sm font-bold text-cyber-muted">#{entry.rank}</span>
               )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold truncate">@{entry.handle}</p>
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-semibold capitalize ${TIER_COLORS[entry.tier] ?? 'text-white/60'}`}>
+                <span className={`text-xs font-semibold capitalize ${TIER_COLORS[entry.tier] ?? 'text-cyber-muted'}`}>
                   {entry.tier} · Lv.{entry.level}
                 </span>
-                {entry.state && <span className="text-xs text-white/30">{entry.state}</span>}
+                {entry.state && <span className="text-xs text-cyber-muted">{entry.state}</span>}
               </div>
             </div>
             <div className="text-right">
               <p className="font-black text-cyber-neon text-sm">{fmt(entry.earningsKobo)}</p>
-              <p className="text-xs text-white/40">{entry.validClicks} clicks</p>
+              <p className="text-xs text-cyber-muted">{entry.validClicks} clicks</p>
             </div>
           </div>
         ))}
