@@ -27,8 +27,10 @@ async function apiFetch<T>(
   }).finally(() => clearTimeout(timer))
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { message?: string }
-    throw new ApiError(res.status, body.message ?? res.statusText)
+    // The API sends { error }, some middleware sends { message } — accept both.
+    const body = await res.json().catch(() => ({})) as { message?: string; error?: unknown }
+    const detail = body.message ?? (typeof body.error === 'string' ? body.error : undefined)
+    throw new ApiError(res.status, detail ?? res.statusText)
   }
 
 
