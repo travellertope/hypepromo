@@ -1,8 +1,15 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, type CreatorProfile, type Social } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+
+function SlowHint() {
+  const [show, setShow] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setShow(true), 4000); return () => clearTimeout(t) }, [])
+  if (!show) return null
+  return <p className="text-cyber-muted text-xs animate-pulse">Connecting to server…</p>
+}
 
 const NICHES = ['Fashion', 'Tech', 'Comedy', 'Music', 'Sports', 'Food', 'Travel', 'Finance', 'Health', 'Gaming']
 const STATES = ['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara']
@@ -14,6 +21,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [slowConn, setSlowConn] = useState(false)
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveOk, setSaveOk] = useState(false)
 
@@ -48,6 +57,8 @@ export default function ProfilePage() {
     setSaving(true)
     setSaveError(null)
     setSaveOk(false)
+    setSlowConn(false)
+    slowTimer.current = setTimeout(() => setSlowConn(true), 4000)
     try {
       const updated = await api.creator.upsertProfile({ handle, bio: bio || null, state: state || null, niches: niches.length ? niches : null })
       setProfile(updated)
@@ -55,12 +66,10 @@ export default function ProfilePage() {
       setTimeout(() => setSaveOk(false), 3000)
     } catch (e) {
       const msg = (e as Error).message ?? ''
-      setSaveError(
-        msg.includes('aborted') || msg.includes('abort')
-          ? 'Server is waking up — please wait a moment and try again.'
-          : msg || 'Failed to save. Please try again.'
-      )
+      setSaveError(msg.includes('aborted') || msg.includes('abort') ? 'Request timed out — please try again.' : msg || 'Failed to save.')
     } finally {
+      clearTimeout(slowTimer.current!)
+      setSlowConn(false)
       setSaving(false)
     }
   }
@@ -77,8 +86,9 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
+        <SlowHint />
       </div>
     )
   }
@@ -161,11 +171,21 @@ export default function ProfilePage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-cyber-accent to-pink-500 text-white font-bold disabled:opacity-50 mt-2 shadow-lg"
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-cyber-accent to-pink-500 text-white font-bold disabled:opacity-50 mt-2 shadow-lg transition-all"
         >
-          {saving ? 'Saving…' : saveOk ? '✓ Saved!' : 'Save Profile'}
+          {saving ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+              {slowConn ? 'Still connecting…' : 'Saving…'}
+            </span>
+          ) : saveOk ? '✓ Saved!' : 'Save Profile'}
         </button>
 
+        {slowConn && saving && (
+          <p className="text-cyber-muted text-xs text-center -mt-1 animate-pulse">
+            First request takes a moment to connect — hang tight
+          </p>
+        )}
         {saveError && (
           <p className="text-red-500 text-xs text-center -mt-1">{saveError}</p>
         )}
