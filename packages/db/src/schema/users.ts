@@ -5,8 +5,8 @@ export const kycStatusEnum = pgEnum('kyc_status', ['none', 'pending', 'approved'
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey(), // matches Supabase auth.users.id
-  phone: text('phone').notNull().unique(),
-  email: text('email').unique(),
+  phone: text('phone').unique(),
+  email: text('email').notNull().unique(),
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
   role: roleEnum('role').notNull(),
