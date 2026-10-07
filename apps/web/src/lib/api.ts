@@ -11,7 +11,7 @@ async function getToken(): Promise<string | null> {
 async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
-  timeoutMs = 12000,
+  timeoutMs = 30000,
 ): Promise<T> {
   const token = await getToken()
   const controller = new AbortController()
@@ -49,7 +49,7 @@ export const api = {
       apiFetch<CreatorProfile>('/v1/me/creator-profile', {
         method: 'POST',
         body: JSON.stringify(body),
-      }),
+      }, 30000),
     getSocials: () => apiFetch<{ items: Social[] }>('/v1/me/socials'),
     upsertSocial: (platform: string, body: { handle: string; followerCount?: number }) =>
       apiFetch<Social>(`/v1/me/socials/${platform}`, {

@@ -14,6 +14,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
 
   const [handle, setHandle] = useState('')
   const [bio, setBio] = useState('')
@@ -43,11 +45,15 @@ export default function ProfilePage() {
 
   async function handleSave() {
     setSaving(true)
+    setSaveError(null)
+    setSaveOk(false)
     try {
       const updated = await api.creator.upsertProfile({ handle, bio: bio || null, state: state || null, niches: niches.length ? niches : null })
       setProfile(updated)
+      setSaveOk(true)
+      setTimeout(() => setSaveOk(false), 3000)
     } catch (e) {
-      alert((e as Error).message)
+      setSaveError((e as Error).message ?? 'Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -92,32 +98,35 @@ export default function ProfilePage() {
 
       <div className="flex flex-col gap-4">
         <div>
-          <label className="block text-xs text-white/50 mb-1">Handle</label>
+          <label className="block text-xs text-cyber-muted mb-1">Handle</label>
           <input
             value={handle}
             onChange={(e) => setHandle(e.target.value)}
             placeholder="yourhandle"
-            className="w-full bg-white/5 border border-cyber-border rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-cyber-neon"
+            className="w-full bg-cyber-card border border-cyber-border rounded-xl px-4 py-3 text-cyber-text placeholder-cyber-muted focus:outline-none focus:border-cyber-neon"
+            style={{ color: 'var(--cyber-text)' }}
           />
         </div>
 
         <div>
-          <label className="block text-xs text-white/50 mb-1">Bio</label>
+          <label className="block text-xs text-cyber-muted mb-1">Bio</label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={3}
             placeholder="Tell brands about yourself…"
-            className="w-full bg-white/5 border border-cyber-border rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-cyber-neon resize-none"
+            className="w-full bg-cyber-card border border-cyber-border rounded-xl px-4 py-3 text-cyber-text placeholder-cyber-muted focus:outline-none focus:border-cyber-neon resize-none"
+            style={{ color: 'var(--cyber-text)' }}
           />
         </div>
 
         <div>
-          <label className="block text-xs text-white/50 mb-1">State</label>
+          <label className="block text-xs text-cyber-muted mb-1">State</label>
           <select
             value={state}
             onChange={(e) => setState(e.target.value)}
-            className="w-full bg-cyber-card border border-cyber-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyber-neon"
+            className="w-full bg-cyber-card border border-cyber-border rounded-xl px-4 py-3 text-cyber-text focus:outline-none focus:border-cyber-neon"
+            style={{ color: 'var(--cyber-text)' }}
           >
             <option value="">Select state…</option>
             {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -125,7 +134,7 @@ export default function ProfilePage() {
         </div>
 
         <div>
-          <label className="block text-xs text-white/50 mb-2">Niches</label>
+          <label className="block text-xs text-cyber-muted mb-2">Niches</label>
           <div className="flex flex-wrap gap-2">
             {NICHES.map((n) => (
               <button
@@ -133,8 +142,8 @@ export default function ProfilePage() {
                 onClick={() => toggleNiche(n)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                   niches.includes(n)
-                    ? 'bg-cyber-accent/30 border-cyber-accent text-cyber-accent'
-                    : 'border-cyber-border text-white/50'
+                    ? 'bg-cyber-accent/20 border-cyber-accent text-cyber-accent'
+                    : 'border-cyber-border text-cyber-muted'
                 }`}
               >
                 {n}
@@ -146,24 +155,28 @@ export default function ProfilePage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-3 rounded-xl bg-cyber-neon text-black font-bold disabled:opacity-50 mt-2"
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-cyber-accent to-pink-500 text-white font-bold disabled:opacity-50 mt-2 shadow-lg"
         >
-          {saving ? 'Saving…' : 'Save Profile'}
+          {saving ? 'Saving…' : saveOk ? '✓ Saved!' : 'Save Profile'}
         </button>
+
+        {saveError && (
+          <p className="text-red-500 text-xs text-center -mt-1">{saveError}</p>
+        )}
 
         {/* Socials */}
         {socials.length > 0 && (
           <div className="mt-2">
-            <h3 className="text-sm font-semibold text-white/60 mb-2">Connected Platforms</h3>
+            <h3 className="text-sm font-semibold text-cyber-muted mb-2">Connected Platforms</h3>
             <div className="flex flex-col gap-2">
               {socials.map((s) => (
                 <div key={s.id} className="glass-panel rounded-xl px-4 py-3 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold capitalize">{s.platform.replace('_', ' ')}</p>
-                    <p className="text-xs text-white/40">@{s.handle}</p>
+                    <p className="text-sm font-semibold text-cyber-text capitalize">{s.platform.replace('_', ' ')}</p>
+                    <p className="text-xs text-cyber-muted">@{s.handle}</p>
                   </div>
                   {s.followerCount && (
-                    <span className="text-xs text-cyber-neon">{s.followerCount.toLocaleString()} followers</span>
+                    <span className="text-xs text-cyber-neon font-semibold">{s.followerCount.toLocaleString()} followers</span>
                   )}
                 </div>
               ))}
@@ -176,15 +189,15 @@ export default function ProfilePage() {
             <div className="grid grid-cols-3 gap-3 text-center">
               <div>
                 <p className="text-xl font-black text-cyber-neon">{profile.level}</p>
-                <p className="text-xs text-white/40">Level</p>
+                <p className="text-xs text-cyber-muted">Level</p>
               </div>
               <div>
-                <p className="text-xl font-black text-white">{profile.xp.toLocaleString()}</p>
-                <p className="text-xs text-white/40">XP</p>
+                <p className="text-xl font-black text-cyber-text">{profile.xp.toLocaleString()}</p>
+                <p className="text-xs text-cyber-muted">XP</p>
               </div>
               <div>
                 <p className="text-xl font-black text-orange-400">{profile.streakDays}</p>
-                <p className="text-xs text-white/40">Day Streak</p>
+                <p className="text-xs text-cyber-muted">Day Streak</p>
               </div>
             </div>
           </div>
