@@ -7,3 +7,6 @@ dist
 .env.*.local
 *.tsbuildinfo
 coverage
+
+# Next.js generated
+next-env.d.ts
