@@ -19,6 +19,15 @@ import adminFraudRoutes from './modules/admin/fraud.ts'
 import leaderboardRoutes from './modules/leaderboards/router.ts'
 import proofsRoutes from './modules/proofs/router.ts'
 
+process.on('unhandledRejection', (reason) => {
+  console.error('FATAL unhandledRejection:', reason)
+  process.exit(1)
+})
+process.on('uncaughtException', (err) => {
+  console.error('FATAL uncaughtException:', err)
+  process.exit(1)
+})
+
 const isDev = process.env['NODE_ENV'] !== 'production'
 
 const app = Fastify({
@@ -28,40 +37,46 @@ const app = Fastify({
   trustProxy: true,
 })
 
-await app.register(helmet, { contentSecurityPolicy: !isDev })
-
-await app.register(cors, {
-  origin: isDev ? true : ['https://promoet.com', /\.promoet\.com$/],
-  credentials: true,
-})
-
-await app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
-
-await app.register(sensible)   // adds app.httpErrors.*
-await app.register(authPlugin) // adds app.authenticate + request.authUser
-
-// Routes
-await app.register(healthRoutes, { prefix: '/health' })
-await app.register(campaignRoutes, { prefix: '/v1' })
-await app.register(questRoutes, { prefix: '/v1' })
-await app.register(clickRoutes, { prefix: '/v1' })
-await app.register(identityRoutes, { prefix: '/v1' })
-await app.register(socialsRoutes, { prefix: '/v1' })
-await app.register(walletRoutes, { prefix: '/v1' })
-await app.register(paymentsRoutes, { prefix: '/v1' })
-await app.register(internalRoutes, { prefix: '/v1' })
-await app.register(adminWithdrawalRoutes, { prefix: '/v1' })
-await app.register(adminFraudRoutes, { prefix: '/v1' })
-await app.register(leaderboardRoutes, { prefix: '/v1' })
-await app.register(proofsRoutes, { prefix: '/v1' })
-
-const port = Number(process.env['PORT'] ?? 3001)
-const host = process.env['HOST'] ?? '0.0.0.0'
+const startupTimer = setTimeout(() => {
+  console.error('FATAL: startup timed out after 30s — check for a hanging await')
+  process.exit(1)
+}, 30_000)
 
 try {
+  await app.register(helmet, { contentSecurityPolicy: !isDev })
+
+  await app.register(cors, {
+    origin: isDev ? true : ['https://promoet.com', /\.promoet\.com$/],
+    credentials: true,
+  })
+
+  await app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
+
+  await app.register(sensible)   // adds app.httpErrors.*
+  await app.register(authPlugin) // adds app.authenticate + request.authUser
+
+  // Routes
+  await app.register(healthRoutes, { prefix: '/health' })
+  await app.register(campaignRoutes, { prefix: '/v1' })
+  await app.register(questRoutes, { prefix: '/v1' })
+  await app.register(clickRoutes, { prefix: '/v1' })
+  await app.register(identityRoutes, { prefix: '/v1' })
+  await app.register(socialsRoutes, { prefix: '/v1' })
+  await app.register(walletRoutes, { prefix: '/v1' })
+  await app.register(paymentsRoutes, { prefix: '/v1' })
+  await app.register(internalRoutes, { prefix: '/v1' })
+  await app.register(adminWithdrawalRoutes, { prefix: '/v1' })
+  await app.register(adminFraudRoutes, { prefix: '/v1' })
+  await app.register(leaderboardRoutes, { prefix: '/v1' })
+  await app.register(proofsRoutes, { prefix: '/v1' })
+
+  const port = Number(process.env['PORT'] ?? 3001)
+  const host = process.env['HOST'] ?? '0.0.0.0'
+
   await app.listen({ port, host })
-  app.log.info(`API listening on ${host}:${port}`)
+  clearTimeout(startupTimer)
+  console.log(`API listening on ${host}:${port}`)
 } catch (err) {
-  app.log.error(err)
+  console.error('FATAL startup error:', err)
   process.exit(1)
 }
