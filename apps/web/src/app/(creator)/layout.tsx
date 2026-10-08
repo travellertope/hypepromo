@@ -8,9 +8,9 @@ export default function CreatorLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen pb-20">
       {/* Compact branding bar — keeps the Logo visible without competing with page content */}
       <header className="sticky top-0 z-10 bg-cyber-card border-b border-cyber-border">
-        <div className="max-w-lg mx-auto px-4 h-12 flex items-center">
+        <div className="h-12 flex items-center justify-center px-4">
           <Link href="/creator" aria-label="Promoet home">
-            <Logo className="h-6 w-auto" variant="icon" />
+            <Logo className="h-8 w-auto" variant="wordmark" />
           </Link>
         </div>
       </header>
