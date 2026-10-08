@@ -1,11 +1,10 @@
-import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
 import { eq, desc } from 'drizzle-orm'
 import { db } from '@promoet/db/client'
 import { clicks, referralLinks, quests, campaigns } from '@promoet/db/schema'
 import { requireAdmin } from '../../plugins/require-role.ts'
 
-export default fp(async function adminFraudRoutes(app: FastifyInstance) {
+export default async function adminFraudRoutes(app: FastifyInstance) {
   // List recent rejected/fraud clicks
   app.get('/admin/clicks/fraud', { preHandler: requireAdmin }, async (req, rep) => {
     const q = req.query as Record<string, string>
@@ -34,4 +33,4 @@ export default fp(async function adminFraudRoutes(app: FastifyInstance) {
 
     return rep.send({ items: rows })
   })
-})
+}

@@ -1,4 +1,3 @@
-import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { eq, and } from 'drizzle-orm'
@@ -14,7 +13,7 @@ const UpsertSocialSchema = z.object({
   followerCount: z.number().int().nonnegative().optional(),
 })
 
-export default fp(async function socialsRoutes(app: FastifyInstance) {
+export default async function socialsRoutes(app: FastifyInstance) {
   app.get('/me/socials', { preHandler: requireCreator }, async (req, rep) => {
     const rows = await db
       .select()
@@ -67,4 +66,4 @@ export default fp(async function socialsRoutes(app: FastifyInstance) {
 
     return rep.status(204).send()
   })
-})
+}

@@ -1,4 +1,3 @@
-import fp from 'fastify-plugin'
 import type { FastifyPluginAsync } from 'fastify'
 import { IngestClickSchema } from '@promoet/schemas'
 import { ingestClick } from './service.ts'
@@ -21,4 +20,4 @@ const clickRoutes: FastifyPluginAsync = async (app) => {
   })
 }
 
-export default fp(clickRoutes, { name: 'click-routes' })
+export default clickRoutes

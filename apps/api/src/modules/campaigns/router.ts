@@ -1,4 +1,3 @@
-import fp from 'fastify-plugin'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import {
@@ -225,4 +224,4 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
   )
 }
 
-export default fp(campaignRoutes, { name: 'campaign-routes' })
+export default campaignRoutes

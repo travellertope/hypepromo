@@ -1,4 +1,3 @@
-import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { requireCreator, requireAdvertiser } from '../../plugins/require-role.ts'
@@ -24,7 +23,7 @@ const UpsertAdvertiserSchema = z.object({
   billingEmail: z.string().email().optional(),
 })
 
-export default fp(async function identityRoutes(app: FastifyInstance) {
+export default async function identityRoutes(app: FastifyInstance) {
   // Creator profile
   app.post('/me/creator-profile', { preHandler: requireCreator }, async (req, rep) => {
     const body = UpsertCreatorSchema.safeParse(req.body)
@@ -59,4 +58,4 @@ export default fp(async function identityRoutes(app: FastifyInstance) {
     if (!profile) return rep.status(404).send({ error: 'Profile not found' })
     return rep.send(profile)
   })
-})
+}

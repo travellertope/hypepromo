@@ -1,10 +1,9 @@
-import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
 import { eq, desc, and } from 'drizzle-orm'
 import { db } from '@promoet/db/client'
 import { leaderboardEntries, seasons, creators } from '@promoet/db/schema'
 
-export default fp(async function leaderboardRoutes(app: FastifyInstance) {
+export default async function leaderboardRoutes(app: FastifyInstance) {
   // GET /v1/leaderboards/active — current season top 50
   app.get('/leaderboards/active', async (_req, rep) => {
     const [season] = await db
@@ -76,4 +75,4 @@ export default fp(async function leaderboardRoutes(app: FastifyInstance) {
       items: rows.map((r) => ({ ...r, earningsKobo: Number(r.earningsKobo) })),
     })
   })
-})
+}

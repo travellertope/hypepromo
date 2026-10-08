@@ -1,4 +1,3 @@
-import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
 import { eq, desc } from 'drizzle-orm'
 import { db } from '@promoet/db/client'
@@ -6,7 +5,7 @@ import { postProofs, quests, campaigns, creators } from '@promoet/db/schema'
 import { requireCreator, requireAdmin } from '../../plugins/require-role.ts'
 import { awardXp } from '../xp/service.ts'
 
-export default fp(async function proofsRoutes(app: FastifyInstance) {
+export default async function proofsRoutes(app: FastifyInstance) {
   // POST /v1/quests/:questId/proof — creator submits post proof
   app.post(
     '/quests/:questId/proof',
@@ -130,4 +129,4 @@ export default fp(async function proofsRoutes(app: FastifyInstance) {
       return rep.send(proof)
     },
   )
-})
+}

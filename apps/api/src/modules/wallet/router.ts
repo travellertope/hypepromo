@@ -1,4 +1,3 @@
-import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { requireCreator } from '../../plugins/require-role.ts'
@@ -21,7 +20,7 @@ const WithdrawSchema = z.object({
   amountKobo: z.number().int().positive(),
 })
 
-export default fp(async function walletRoutes(app: FastifyInstance) {
+export default async function walletRoutes(app: FastifyInstance) {
   app.get('/me/wallet', { preHandler: requireCreator }, async (req, rep) => {
     const wallet = await getWallet(req.authUser.id)
     return rep.send(wallet)
@@ -98,7 +97,7 @@ export default fp(async function walletRoutes(app: FastifyInstance) {
     const list = await listWithdrawals(req.authUser.id)
     return rep.send({ items: list })
   })
-})
+}
 
 // Inline helper — avoids circular import with payments module
 async function createPaystackRecipient(opts: {

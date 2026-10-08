@@ -1,4 +1,3 @@
-import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { requireAdvertiser } from '../../plugins/require-role.ts'
@@ -9,7 +8,7 @@ const TopupSchema = z.object({
   amountKobo: z.number().int().min(MIN_TOPUP_KOBO, `Minimum topup is ₦${MIN_TOPUP_KOBO / 100}`),
 })
 
-export default fp(async function paymentsRoutes(app: FastifyInstance) {
+export default async function paymentsRoutes(app: FastifyInstance) {
   app.post('/me/topup', { preHandler: requireAdvertiser }, async (req, rep) => {
     const body = TopupSchema.safeParse(req.body)
     if (!body.success) return rep.status(400).send({ error: body.error.flatten() })
@@ -46,4 +45,4 @@ export default fp(async function paymentsRoutes(app: FastifyInstance) {
       return rep.status(200).send({ ok: true })
     },
   )
-})
+}

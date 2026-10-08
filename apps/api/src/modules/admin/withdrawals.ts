@@ -1,5 +1,4 @@
 import { eq, desc } from 'drizzle-orm'
-import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
 import { db } from '@promoet/db/client'
 import { withdrawals, creators } from '@promoet/db/schema'
@@ -10,7 +9,7 @@ function generateTransferRef(): string {
   return `tr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-export default fp(async function adminWithdrawalRoutes(app: FastifyInstance) {
+export default async function adminWithdrawalRoutes(app: FastifyInstance) {
   // List pending withdrawals
   app.get('/admin/withdrawals', { preHandler: requireAdmin }, async (_req, rep) => {
     const rows = await db
@@ -130,4 +129,4 @@ export default fp(async function adminWithdrawalRoutes(app: FastifyInstance) {
 
     return rep.send({ ok: true })
   })
-})
+}

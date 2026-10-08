@@ -1,4 +1,3 @@
-import fp from 'fastify-plugin'
 import type { FastifyPluginAsync } from 'fastify'
 import { ClaimQuestSchema } from '@promoet/schemas'
 import { requireCreator } from '../../plugins/require-role.ts'
@@ -41,4 +40,4 @@ const questRoutes: FastifyPluginAsync = async (app) => {
   )
 }
 
-export default fp(questRoutes, { name: 'quest-routes' })
+export default questRoutes
