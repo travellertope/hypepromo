@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { api, type Quest } from '@/lib/api'
+import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
 
 function fmt(kobo: number) {
   return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -19,6 +21,7 @@ export default function QuestsPage() {
   const [quests, setQuests] = useState<Quest[]>([])
   const [loading, setLoading] = useState(true)
   const [claiming, setClaiming] = useState<string | null>(null)
+  const [claimError, setClaimError] = useState<string | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
 
@@ -32,12 +35,13 @@ export default function QuestsPage() {
   }, [])
 
   async function handleClaim(questId: string) {
+    setClaimError(null)
     setClaiming(questId)
     try {
       const updated = await api.quests.claim(questId)
       setQuests((prev) => prev.map((q) => (q.id === questId ? updated : q)))
     } catch (e) {
-      alert((e as Error).message)
+      setClaimError(errorMessage(e, 'Failed to claim quest.'))
     } finally {
       setClaiming(null)
     }
@@ -53,8 +57,9 @@ export default function QuestsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
+        <SlowHint active />
       </div>
     )
   }
@@ -62,6 +67,8 @@ export default function QuestsPage() {
   return (
     <div className="max-w-lg mx-auto px-4 pt-8">
       <h1 className="text-2xl font-black mb-6">Quest Feed</h1>
+
+      <ErrorNote className="mb-3">{claimError}</ErrorNote>
 
       <div className="flex flex-col gap-3">
         {quests.length === 0 && (
@@ -110,6 +117,8 @@ export default function QuestsPage() {
                 </button>
               )}
             </div>
+
+            <SlowHint active={claiming === q.id} className="mt-2" />
           </div>
         ))}
 

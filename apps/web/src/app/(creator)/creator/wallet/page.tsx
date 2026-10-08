@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { api, type WalletResponse, type BankAccount, type Withdrawal } from '@/lib/api'
+import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
 
 function fmt(kobo: number) {
   return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -18,11 +20,13 @@ export default function WalletPage() {
   // Withdraw form
   const [amount, setAmount] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
+  const [withdrawError, setWithdrawError] = useState<string | null>(null)
 
   // Bank form
   const [bankCode, setBankCode] = useState('')
   const [acctNum, setAcctNum] = useState('')
   const [savingBank, setSavingBank] = useState(false)
+  const [bankError, setBankError] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -38,8 +42,12 @@ export default function WalletPage() {
   }, [])
 
   async function handleWithdraw() {
+    setWithdrawError(null)
     const kobo = Math.round(parseFloat(amount) * 100)
-    if (isNaN(kobo) || kobo < 100000) return alert('Minimum withdrawal is ₦1,000')
+    if (isNaN(kobo) || kobo < 100000) {
+      setWithdrawError('Minimum withdrawal is ₦1,000')
+      return
+    }
     setWithdrawing(true)
     try {
       await api.creator.requestWithdrawal(kobo)
@@ -52,21 +60,25 @@ export default function WalletPage() {
       setWithdrawals(wds.items)
       setTab('earnings')
     } catch (e) {
-      alert((e as Error).message)
+      setWithdrawError(errorMessage(e, 'Failed to request withdrawal.'))
     } finally {
       setWithdrawing(false)
     }
   }
 
   async function handleSaveBank() {
-    if (!bankCode || !acctNum) return
+    if (!bankCode || !acctNum) {
+      setBankError('Enter both a bank code and an account number.')
+      return
+    }
+    setBankError(null)
     setSavingBank(true)
     try {
       const updated = await api.creator.setBankAccount({ bankCode, bankAccountNumber: acctNum })
       setBank(updated)
       setTab('earnings')
     } catch (e) {
-      alert((e as Error).message)
+      setBankError(errorMessage(e, 'Failed to save bank account.'))
     } finally {
       setSavingBank(false)
     }
@@ -74,8 +86,9 @@ export default function WalletPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
+        <SlowHint active />
       </div>
     )
   }
@@ -168,6 +181,8 @@ export default function WalletPage() {
               >
                 {withdrawing ? 'Processing…' : 'Request Withdrawal'}
               </button>
+              <SlowHint active={withdrawing} className="-mt-2" />
+              <ErrorNote className="-mt-2">{withdrawError}</ErrorNote>
               <p className="text-xs text-cyber-muted text-center">Min ₦1,000 · Processed within 24h</p>
             </>
           )}
@@ -205,6 +220,8 @@ export default function WalletPage() {
           >
             {savingBank ? 'Saving…' : 'Verify & Save'}
           </button>
+          <SlowHint active={savingBank} className="-mt-2" />
+          <ErrorNote className="-mt-2">{bankError}</ErrorNote>
         </div>
       )}
     </div>

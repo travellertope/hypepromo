@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import { api, type CreateCampaignInput } from '@/lib/api'
 import { useRouter } from 'next/navigation'
+import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
 
 const PLATFORMS = ['whatsapp_status', 'x', 'facebook', 'instagram_story', 'instagram_bio', 'telegram']
 const STATES = ['Lagos','Abuja','Rivers','Kano','Oyo','Delta','Anambra','Ogun','Edo','Enugu','Kaduna','Imo','Abia','Osun','Akwa Ibom']
@@ -10,6 +12,7 @@ export default function NewCampaignPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const [form, setForm] = useState<Partial<CreateCampaignInput>>({
     type: 'cpc',
@@ -32,14 +35,18 @@ export default function NewCampaignPage() {
   }
 
   async function handleSubmit() {
-    if (!form.name || !form.targetUrl || !form.unitPriceKobo || !form.budgetKobo) return
+    if (!form.name || !form.targetUrl || !form.unitPriceKobo || !form.budgetKobo) {
+      setSubmitError('Fill in the name, target URL, price per click and budget first.')
+      return
+    }
+    setSubmitError(null)
     setSaving(true)
     try {
       const campaign = await api.advertiser.createCampaign(form as CreateCampaignInput)
       await api.advertiser.submitCampaign(campaign.id)
       router.push('/advertiser')
     } catch (e) {
-      alert((e as Error).message)
+      setSubmitError(errorMessage(e, 'Failed to submit campaign.'))
       setSaving(false)
     }
   }
@@ -239,13 +246,17 @@ export default function NewCampaignPage() {
           Continue →
         </button>
       ) : (
-        <button
-          onClick={handleSubmit}
-          disabled={saving}
-          className="w-full py-3 rounded-xl bg-cyber-accent text-white font-bold disabled:opacity-50"
-        >
-          {saving ? 'Submitting…' : 'Submit for Review'}
-        </button>
+        <>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="w-full py-3 rounded-xl bg-cyber-accent text-white font-bold disabled:opacity-50"
+          >
+            {saving ? 'Submitting…' : 'Submit for Review'}
+          </button>
+          <SlowHint active={saving} className="mt-2" />
+          <ErrorNote className="mt-2">{submitError}</ErrorNote>
+        </>
       )}
     </div>
   )

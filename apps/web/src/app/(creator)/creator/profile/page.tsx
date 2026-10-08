@@ -1,23 +1,10 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, ApiError, type CreatorProfile, type Social } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-
-function SlowHint() {
-  const [show, setShow] = useState(false)
-  useEffect(() => { const t = setTimeout(() => setShow(true), 4000); return () => clearTimeout(t) }, [])
-  if (!show) return null
-  return <p className="text-cyber-muted text-xs animate-pulse">Getting ready… please hold on</p>
-}
-
-function errorMessage(e: unknown, fallback: string): string {
-  const msg = e instanceof Error ? e.message : ''
-  // AbortController surfaces as a raw DOMException — never show that to a user.
-  if (/abort/i.test(msg)) return 'Request timed out — please try again.'
-  if (/fetch|network/i.test(msg)) return "Couldn't reach the server. Check your connection and try again."
-  return msg || fallback
-}
+import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
 
 const NICHES = ['Fashion', 'Tech', 'Comedy', 'Music', 'Sports', 'Food', 'Travel', 'Finance', 'Health', 'Gaming']
 const STATES = ['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara']
@@ -29,8 +16,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [slowConn, setSlowConn] = useState(false)
-  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveOk, setSaveOk] = useState(false)
 
@@ -77,8 +62,6 @@ export default function ProfilePage() {
     setSaving(true)
     setSaveError(null)
     setSaveOk(false)
-    setSlowConn(false)
-    slowTimer.current = setTimeout(() => setSlowConn(true), 4000)
     try {
       const updated = await api.creator.upsertProfile({ handle, bio: bio || null, state: state || null, niches: niches.length ? niches : null })
       setProfile(updated)
@@ -87,8 +70,6 @@ export default function ProfilePage() {
     } catch (e) {
       setSaveError(errorMessage(e, 'Failed to save.'))
     } finally {
-      clearTimeout(slowTimer.current!)
-      setSlowConn(false)
       setSaving(false)
     }
   }
@@ -107,7 +88,7 @@ export default function ProfilePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
-        <SlowHint />
+        <SlowHint active />
       </div>
     )
   }
@@ -195,19 +176,13 @@ export default function ProfilePage() {
           {saving ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-              {slowConn ? 'Still connecting…' : 'Saving…'}
+              Saving…
             </span>
           ) : saveOk ? '✓ Saved!' : 'Save Profile'}
         </button>
 
-        {slowConn && saving && (
-          <p className="text-cyber-muted text-xs text-center -mt-1 animate-pulse">
-            Getting ready… please hold on
-          </p>
-        )}
-        {saveError && (
-          <p className="text-red-500 text-xs text-center -mt-1">{saveError}</p>
-        )}
+        <SlowHint active={saving} className="-mt-1" />
+        <ErrorNote className="-mt-1">{saveError}</ErrorNote>
 
         {/* Socials */}
         {socials.length > 0 && (

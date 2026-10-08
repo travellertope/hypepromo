@@ -1,11 +1,14 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { api, type AdminProof } from '@/lib/api'
+import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
 
 export default function AdminProofsPage() {
   const [items, setItems] = useState<AdminProof[]>([])
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     api.admin.getProofs().then((res) => {
@@ -15,12 +18,13 @@ export default function AdminProofsPage() {
   }, [])
 
   async function approve(id: string) {
+    setActionError(null)
     setActing(id)
     try {
       await api.admin.approveProof(id)
       setItems((prev) => prev.filter((p) => p.id !== id))
     } catch (e) {
-      alert((e as Error).message)
+      setActionError(errorMessage(e, 'Failed to approve proof.'))
     } finally {
       setActing(null)
     }
@@ -29,22 +33,30 @@ export default function AdminProofsPage() {
   async function reject(id: string) {
     const reason = prompt('Rejection reason:')
     if (!reason) return
+    setActionError(null)
     setActing(id)
     try {
       await api.admin.rejectProof(id, reason)
       setItems((prev) => prev.filter((p) => p.id !== id))
     } catch (e) {
-      alert((e as Error).message)
+      setActionError(errorMessage(e, 'Failed to reject proof.'))
     } finally {
       setActing(null)
     }
   }
 
-  if (loading) return <div className="text-white/40 py-10 text-center">Loading…</div>
+  if (loading) return (
+    <div className="py-10 text-center flex flex-col items-center gap-2">
+      <p className="text-white/40">Loading…</p>
+      <SlowHint active />
+    </div>
+  )
 
   return (
     <div>
       <h1 className="text-2xl font-black mb-6">Post Proof Review</h1>
+
+      <ErrorNote className="mb-4">{actionError}</ErrorNote>
 
       {items.length === 0 && (
         <div className="text-center py-16 text-white/40">
@@ -99,6 +111,8 @@ export default function AdminProofsPage() {
                 Reject
               </button>
             </div>
+
+            <SlowHint active={acting === proof.id} className="mt-2" />
           </div>
         ))}
       </div>

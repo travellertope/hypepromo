@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { api, type Campaign } from '@/lib/api'
+import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
 import Link from 'next/link'
 
 function fmt(kobo: number) {
@@ -21,6 +23,7 @@ export default function AdvertiserCampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [going, setGoing] = useState<string | null>(null)
+  const [goLiveError, setGoLiveError] = useState<string | null>(null)
 
   useEffect(() => {
     api.advertiser.listCampaigns().then((res) => {
@@ -30,12 +33,13 @@ export default function AdvertiserCampaignsPage() {
   }, [])
 
   async function handleGoLive(id: string) {
+    setGoLiveError(null)
     setGoing(id)
     try {
       const updated = await api.advertiser.goLive(id)
       setCampaigns((prev) => prev.map((c) => (c.id === id ? updated : c)))
     } catch (e) {
-      alert((e as Error).message)
+      setGoLiveError(errorMessage(e, 'Failed to take the campaign live.'))
     } finally {
       setGoing(null)
     }
@@ -43,8 +47,9 @@ export default function AdvertiserCampaignsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
+        <SlowHint active />
       </div>
     )
   }
@@ -60,6 +65,8 @@ export default function AdvertiserCampaignsPage() {
           + New Campaign
         </Link>
       </div>
+
+      <ErrorNote className="mb-4">{goLiveError}</ErrorNote>
 
       {campaigns.length === 0 && (
         <div className="text-center py-20">
@@ -126,6 +133,8 @@ export default function AdvertiserCampaignsPage() {
                 <p className="text-xs text-red-400 mt-1">Rejected: {c.rejectionReason}</p>
               )}
             </div>
+
+            <SlowHint active={going === c.id} className="mt-2" />
           </div>
         ))}
       </div>
