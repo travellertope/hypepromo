@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   title: 'Promoet',
   description: 'Earn from every click. Grow your influence.',
   manifest: '/manifest.json',
-  icons: { icon: '/favicon.ico' },
+  // icon.png and apple-icon.png in src/app/ are picked up automatically by Next.js
 }
 
 export const viewport: Viewport = {
