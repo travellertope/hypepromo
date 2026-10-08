@@ -234,7 +234,7 @@ export async function listMyQuests(creatorId: string): Promise<QuestWithLinks[]>
         type: r.campaignType,
         status: r.questStatus,
         links: [],
-        claimedAt: r.claimedAt.toISOString(),
+        claimedAt: r.claimedAt instanceof Date ? r.claimedAt.toISOString() : String(r.claimedAt),
       }
       map.set(r.questId, entry)
     }

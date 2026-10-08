@@ -1,4 +1,4 @@
-import { eq, and, desc, lt, or, isNull, sql, count } from 'drizzle-orm'
+import { eq, and, desc, lt, gt, or, isNull, sql, count } from 'drizzle-orm'
 import { db } from '@promoet/db/client'
 import {
   campaigns,
@@ -309,7 +309,7 @@ export async function listLiveCampaigns(
     .where(
       and(
         eq(campaigns.status, 'live'),
-        or(isNull(campaigns.endsAt), sql`${campaigns.endsAt} > ${now}`),
+        or(isNull(campaigns.endsAt), gt(campaigns.endsAt, now)),
         type ? eq(campaigns.type, type) : undefined,
         platform
           ? sql`${campaigns.platforms} @> ARRAY[${platform}]::text[]`
