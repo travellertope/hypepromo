@@ -3,6 +3,8 @@ import type { Metadata } from 'next'
 import { Logo } from '@/components/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { BudgetCalculator } from '@/components/marketing/BudgetCalculator'
+import { AuthModalProvider } from '@/components/auth/AuthModal'
+import { AuthCta } from '@/components/auth/AuthCta'
 
 export const metadata: Metadata = {
   title: 'Promoet — Gamified Social Advertising & Micro-Influencer Network',
@@ -87,6 +89,7 @@ function Icon({ children, className = '' }: { children: React.ReactNode; classNa
 
 export default function Home() {
   return (
+    <AuthModalProvider>
     <div className="min-h-screen flex flex-col">
       <header className="fixed top-0 inset-x-0 z-50 bg-cyber-card border-b border-cyber-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
@@ -104,18 +107,18 @@ export default function Home() {
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle />
-            <Link
-              href="/auth/login"
+            <AuthCta
+              role="creator"
               className="hidden sm:inline-flex px-4 py-2.5 rounded-xl text-xs font-bold text-cyber-muted hover:text-cyber-text transition"
             >
               Sign In
-            </Link>
-            <Link
-              href="/auth/login?role=advertiser"
+            </AuthCta>
+            <AuthCta
+              role="advertiser"
               className="px-5 py-2.5 rounded-xl bg-cyber-accent text-white text-xs font-bold hover:opacity-90 transition"
             >
               Launch Campaign
-            </Link>
+            </AuthCta>
           </div>
         </div>
       </header>
@@ -137,18 +140,8 @@ export default function Home() {
                 distribute visual assets, and pay only for verified unique engagement.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                <Link
-                  href="/auth/login?role=advertiser"
-                  className="w-full sm:w-auto px-8 py-4 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-sm hover:opacity-90 transition"
-                >
-                  Start Advertising as a Brand
-                </Link>
-                <Link
-                  href="/auth/login?role=creator"
-                  className="w-full sm:w-auto px-8 py-4 rounded-xl glass-panel text-cyber-text font-bold text-sm hover:border-cyber-neon transition"
-                >
-                  Join as a Micro-Influencer
-                </Link>
+                <AuthCta role="advertiser" className="inline-block text-center w-full sm:w-auto px-8 py-4 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-sm hover:opacity-90 transition">Start Advertising as a Brand</AuthCta>
+                <AuthCta role="creator" className="inline-block text-center w-full sm:w-auto px-8 py-4 rounded-xl glass-panel text-cyber-text font-bold text-sm hover:border-cyber-neon transition">Join as a Micro-Influencer</AuthCta>
               </div>
             </div>
           </div>
@@ -260,18 +253,8 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-extrabold text-cyber-text">Ready to start?</h2>
             <p className="text-sm text-cyber-muted">Join as a creator and earn per verified click, or launch your first campaign today.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/auth/login?role=creator"
-                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-sm hover:opacity-90 transition"
-              >
-                Join as a Creator
-              </Link>
-              <Link
-                href="/auth/login?role=advertiser"
-                className="w-full sm:w-auto px-8 py-4 rounded-xl glass-panel text-cyber-text font-bold text-sm hover:border-cyber-neon transition"
-              >
-                Launch a Campaign
-              </Link>
+              <AuthCta role="creator" className="inline-block text-center w-full sm:w-auto px-8 py-4 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-sm hover:opacity-90 transition">Join as a Creator</AuthCta>
+              <AuthCta role="advertiser" className="inline-block text-center w-full sm:w-auto px-8 py-4 rounded-xl glass-panel text-cyber-text font-bold text-sm hover:border-cyber-neon transition">Launch a Campaign</AuthCta>
             </div>
           </div>
         </section>
@@ -293,5 +276,6 @@ export default function Home() {
         </div>
       </footer>
     </div>
+    </AuthModalProvider>
   )
 }

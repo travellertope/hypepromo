@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { AuthCta } from '@/components/auth/AuthCta'
 
 const naira = (n: number) => `₦${n.toLocaleString('en-NG')}`
 
@@ -59,12 +59,12 @@ export function BudgetCalculator() {
         </div>
 
         <div className="pt-4 text-center">
-          <Link
-            href="/auth/login?role=advertiser"
+          <AuthCta
+            role="advertiser"
             className="inline-block px-8 py-3.5 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-xs hover:opacity-90 transition"
           >
             Deploy This Campaign Now
-          </Link>
+          </AuthCta>
         </div>
       </div>
     </div>
