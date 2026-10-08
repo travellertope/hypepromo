@@ -25,7 +25,6 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
   const [countdown, setCountdown] = useState(0)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -47,7 +46,6 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
 
   const sendCode = useCallback(async () => {
     setError(null)
-    setNotice(null)
     setLoading(true)
     const { error: e } = await createClient().auth.signInWithOtp({
       email: email.trim(),
@@ -60,12 +58,11 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
     }
     setStep('otp')
     startCountdown()
-    setNotice(`Verification code sent to ${email.trim()}`)
     return true
   }, [email, role, startCountdown])
 
   const resendCode = useCallback(async () => {
-    if (countdown > 0) return
+    if (countdown > 0) return false
     setError(null)
     setLoading(true)
     const { error: e } = await createClient().auth.signInWithOtp({
@@ -75,14 +72,14 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
     setLoading(false)
     if (e) {
       setError(e.message)
-      return
+      return false
     }
     startCountdown()
-    setNotice('A fresh code has been sent.')
+    return true
   }, [countdown, email, role, startCountdown])
 
   const verifyCode = useCallback(async () => {
-    if (otp.trim().length < 4) return
+    if (otp.trim().length < 4) return false
     setError(null)
     setLoading(true)
     const { error: e } = await createClient().auth.verifyOtp({
@@ -94,11 +91,12 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
       setError('Invalid or expired code. Try again.')
       setOtp('')
       setLoading(false)
-      return
+      return false
     }
     onVerified?.()
     router.replace(dashboardFor(role))
     router.refresh()
+    return true
   }, [email, otp, role, router, onVerified])
 
   const signInWithGoogle = useCallback(async () => {
@@ -115,12 +113,11 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
     setStep('email')
     setOtp('')
     setError(null)
-    setNotice(null)
   }, [])
 
   return {
     step, email, setEmail, otp, setOtp,
-    loading, error, notice, countdown,
+    loading, error, countdown,
     sendCode, resendCode, verifyCode, signInWithGoogle, backToEmail,
   }
 }

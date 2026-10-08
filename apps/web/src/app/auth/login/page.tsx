@@ -1,9 +1,9 @@
 'use client'
 
-import { Suspense, useState, useRef, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useState, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTheme } from '@/components/ThemeProvider'
+import { useAuthFlow } from '@/lib/useAuthFlow'
 
 function Toast({ title, message, type, visible }: { title: string; message: string; type: 'success' | 'error' | 'info'; visible: boolean }) {
   const icons = {
@@ -28,107 +28,54 @@ function Toast({ title, message, type, visible }: { title: string; message: stri
 }
 
 function LoginForm() {
-  const [email, setEmail] = useState('')
-  const [step, setStep] = useState<'email' | 'otp'>('email')
-  const [otp, setOtp] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [countdown, setCountdown] = useState(0)
   const [toast, setToast] = useState<{ title: string; message: string; type: 'success' | 'error' | 'info'; visible: boolean }>({ title: '', message: '', type: 'success', visible: false })
   const otpRef = useRef<HTMLInputElement | null>(null)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const router = useRouter()
   const searchParams = useSearchParams()
   const role = searchParams.get('role') ?? 'creator'
   const isAdvertiser = role === 'advertiser'
   const { theme, toggle } = useTheme()
+
+  const {
+    step, email, setEmail, otp, setOtp,
+    loading, error, countdown,
+    sendCode, resendCode, verifyCode, signInWithGoogle, backToEmail,
+  } = useAuthFlow(role, () => showToast('Verified!', 'Redirecting to your dashboard…'))
 
   function showToast(title: string, message: string, type: 'success' | 'error' | 'info' = 'success') {
     setToast({ title, message, type, visible: true })
     setTimeout(() => setToast(t => ({ ...t, visible: false })), 4000)
   }
 
-  function startCountdown(seconds: number) {
-    if (timerRef.current) clearInterval(timerRef.current)
-    setCountdown(seconds)
-    timerRef.current = setInterval(() => {
-      setCountdown(c => {
-        if (c <= 1) { clearInterval(timerRef.current!); return 0 }
-        return c - 1
-      })
-    }, 1000)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current) }, [])
-
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
-    setLoading(true)
-    const supabase = createClient()
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { data: { role } },
-    })
-    if (otpError) {
-      setError(otpError.message)
-      showToast('Failed to send', otpError.message, 'error')
-      setLoading(false)
+    const sent = await sendCode()
+    if (!sent) {
+      showToast('Failed to send', 'Check the address and try again.', 'error')
       return
     }
-    setStep('otp')
-    setLoading(false)
-    startCountdown(45)
     showToast('Code dispatched', `Verification code sent to ${email}`)
     setTimeout(() => otpRef.current?.focus(), 100)
   }
 
   async function handleResend() {
-    if (countdown > 0) return
-    setLoading(true)
-    const supabase = createClient()
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { data: { role } },
-    })
-    setLoading(false)
-    if (otpError) { showToast('Failed to resend', otpError.message, 'error'); return }
-    startCountdown(45)
-    showToast('Code resent', 'A fresh code has been sent.')
+    const sent = await resendCode()
+    showToast(
+      sent ? 'Code resent' : 'Failed to resend',
+      sent ? 'A fresh code has been sent.' : 'Please try again in a moment.',
+      sent ? 'success' : 'error',
+    )
   }
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault()
-    if (otp.length < 4) return
-    setError(null)
-    setLoading(true)
-    const supabase = createClient()
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: otp,
-      type: 'email',
-    })
-    if (verifyError) {
-      setError('Invalid or expired code. Try again.')
+    const ok = await verifyCode()
+    if (!ok) {
       showToast('Invalid code', 'Check the code and try again.', 'error')
-      setOtp('')
       otpRef.current?.focus()
-      setLoading(false)
-      return
     }
-    showToast('Verified!', 'Redirecting to your dashboard…')
-    router.replace(role === 'advertiser' ? '/advertiser' : role === 'admin' ? '/admin' : '/creator')
   }
 
-  async function handleGoogleOAuth() {
-    const supabase = createClient()
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? window.location.origin}/auth/callback?role=${role}`,
-      },
-    })
-  }
+  const handleGoogleOAuth = signInWithGoogle
 
   return (
     <>
@@ -286,7 +233,7 @@ function LoginForm() {
                       <div className="flex items-center justify-between text-xs text-cyber-muted pt-1">
                         <button
                           type="button"
-                          onClick={() => { setStep('email'); setOtp(''); setError(null) }}
+                          onClick={backToEmail}
                           className="hover:text-cyber-text transition-colors flex items-center gap-1"
                         >
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
