@@ -12,17 +12,15 @@ interface LogoProps {
 export function Logo({ className = 'h-9 w-auto', variant = 'wordmark' }: LogoProps) {
   if (variant === 'icon') {
     return (
-      <span className="inline-flex items-center justify-center bg-white rounded-lg px-1.5 py-0.5">
-        <Image
-          src="/logo-icon.png"
-          alt="Promoet"
-          width={56}
-          height={32}
-          className={className}
-          style={{ objectFit: 'contain' }}
-          priority
-        />
-      </span>
+      <Image
+        src="/logo-icon.png"
+        alt="Promoet"
+        width={56}
+        height={32}
+        className={className}
+        style={{ objectFit: 'contain' }}
+        priority
+      />
     )
   }
 
