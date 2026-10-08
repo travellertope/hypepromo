@@ -10,7 +10,7 @@ export default function AdvertiserLayout({ children }: { children: ReactNode }) 
       <header className="border-b border-cyber-border bg-cyber-card sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/advertiser" aria-label="Promoet home">
-            <Logo className="h-8 w-auto" variant="wordmark" />
+            <Logo className="h-10 w-auto" variant="icon" />
           </Link>
           {/* Desktop nav — hidden on mobile where BottomNav takes over */}
           <nav className="hidden md:flex gap-1 items-center">
