@@ -87,6 +87,32 @@ function Icon({ children, className = '' }: { children: React.ReactNode; classNa
   )
 }
 
+// Stand-ins for the design's fa-bullhorn / fa-gamepad / fa-arrow-right,
+// drawn inline so the page needs no icon-font CDN.
+const MegaphoneIcon = (
+  <Icon className="w-[1.1em] h-[1.1em] shrink-0">
+    <path d="M3 11.5 20 6v12L3 12.5z" strokeLinejoin="round" />
+    <path d="M11.2 16.6a3 3 0 1 1-5.6-1.7" strokeLinecap="round" />
+  </Icon>
+)
+
+const GamepadIcon = (
+  <Icon className="w-[1.1em] h-[1.1em] shrink-0">
+    <path d="M7 11.5h3M8.5 10v3" strokeLinecap="round" />
+    <path d="M15 12.5h.01M17.5 10.5h.01" strokeLinecap="round" strokeWidth="2.4" />
+    <path
+      d="M16.9 6.5H7.1a3.6 3.6 0 0 0-3.57 3.1C3.45 10.2 3 14 3 15.3a2.7 2.7 0 0 0 2.7 2.7c.9 0 1.35-.45 1.8-.9l1.1-1.1a1.8 1.8 0 0 1 1.27-.53h3.26a1.8 1.8 0 0 1 1.27.53l1.1 1.1c.45.45.9.9 1.8.9a2.7 2.7 0 0 0 2.7-2.7c0-1.3-.45-5.1-.53-5.7a3.6 3.6 0 0 0-3.57-3.1z"
+      strokeLinejoin="round"
+    />
+  </Icon>
+)
+
+const ArrowRightIcon = (
+  <Icon className="w-3 h-3 shrink-0">
+    <path d="M4 12h15M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+  </Icon>
+)
+
 export default function Home() {
   return (
     <AuthModalProvider>
@@ -115,9 +141,10 @@ export default function Home() {
             </AuthCta>
             <AuthCta
               role="advertiser"
-              className="px-5 py-2.5 rounded-xl bg-cyber-accent text-white text-xs font-bold hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyber-accent text-white text-xs font-bold hover:opacity-90 transition"
             >
               Launch Campaign
+              {ArrowRightIcon}
             </AuthCta>
           </div>
         </div>
@@ -140,8 +167,14 @@ export default function Home() {
                 distribute visual assets, and pay only for verified unique engagement.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                <AuthCta role="advertiser" className="inline-block text-center w-full sm:w-auto px-8 py-4 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-sm hover:opacity-90 transition">Start Advertising as a Brand</AuthCta>
-                <AuthCta role="creator" className="inline-block text-center w-full sm:w-auto px-8 py-4 rounded-xl glass-panel text-cyber-text font-bold text-sm hover:border-cyber-neon transition">Join as a Micro-Influencer</AuthCta>
+                <AuthCta role="advertiser" className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-sm hover:opacity-90 transition">
+                  {MegaphoneIcon}
+                  Start Advertising as a Brand
+                </AuthCta>
+                <AuthCta role="creator" className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl glass-panel text-cyber-text font-bold text-sm hover:border-cyber-neon transition">
+                  <span className="text-cyber-neon inline-flex">{GamepadIcon}</span>
+                  Join as a Micro-Influencer
+                </AuthCta>
               </div>
             </div>
           </div>
@@ -253,8 +286,14 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-extrabold text-cyber-text">Ready to start?</h2>
             <p className="text-sm text-cyber-muted">Join as a creator and earn per verified click, or launch your first campaign today.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <AuthCta role="creator" className="inline-block text-center w-full sm:w-auto px-8 py-4 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-sm hover:opacity-90 transition">Join as a Creator</AuthCta>
-              <AuthCta role="advertiser" className="inline-block text-center w-full sm:w-auto px-8 py-4 rounded-xl glass-panel text-cyber-text font-bold text-sm hover:border-cyber-neon transition">Launch a Campaign</AuthCta>
+              <AuthCta role="creator" className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl bg-cyber-neon text-cyber-dark font-extrabold text-sm hover:opacity-90 transition">
+                {GamepadIcon}
+                Join as a Creator
+              </AuthCta>
+              <AuthCta role="advertiser" className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl glass-panel text-cyber-text font-bold text-sm hover:border-cyber-neon transition">
+                <span className="text-cyber-neon inline-flex">{MegaphoneIcon}</span>
+                Launch a Campaign
+              </AuthCta>
             </div>
           </div>
         </section>
