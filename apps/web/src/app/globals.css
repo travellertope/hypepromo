@@ -37,6 +37,12 @@
   }
 }
 
+/* Logo theme switching — wordmark in light, icon in dark */
+.logo-light { display: block; }
+.logo-dark  { display: none;  }
+[data-theme="dark"] .logo-light { display: none;  }
+[data-theme="dark"] .logo-dark  { display: block; }
+
 @layer components {
   /* glass-panel adapts to both themes */
   .glass-panel {

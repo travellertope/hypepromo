@@ -2,37 +2,34 @@ import Image from 'next/image'
 
 interface LogoProps {
   className?: string
-  /**
-   * wordmark – full "Promoet" text logo, for light/white backgrounds
-   * icon     – rings-only mark, for dark dashboard headers (white pill bg)
-   */
-  variant?: 'wordmark' | 'icon'
 }
 
-export function Logo({ className = 'h-9 w-auto', variant = 'wordmark' }: LogoProps) {
-  if (variant === 'icon') {
-    return (
+// Renders wordmark in light mode and rings icon in dark mode automatically.
+// The variant prop is kept for API compat but ignored — theme decides.
+export function Logo({ className = 'h-9 w-auto' }: LogoProps) {
+  return (
+    <>
+      {/* Light mode: navy wordmark on near-white header */}
       <Image
-        src="/logo-icon.png"
+        src="/logo-wordmark.png"
         alt="Promoet"
         width={1024}
         height={209}
-        className={className}
+        className={`${className} logo-light`}
         style={{ objectFit: 'contain' }}
         priority
       />
-    )
-  }
-
-  return (
-    <Image
-      src="/logo-wordmark.png"
-      alt="Promoet"
-      width={1024}
-      height={209}
-      className={className}
-      style={{ objectFit: 'contain' }}
-      priority
-    />
+      {/* Dark mode: neon rings mark on dark header */}
+      <Image
+        src="/logo-icon.png"
+        alt=""
+        aria-hidden
+        width={1024}
+        height={209}
+        className={`${className} logo-dark`}
+        style={{ objectFit: 'contain' }}
+        priority
+      />
+    </>
   )
 }
