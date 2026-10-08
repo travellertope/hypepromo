@@ -10,7 +10,7 @@ export default function CreatorLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-10 bg-cyber-card border-b border-cyber-border">
         <div className="h-12 flex items-center justify-center px-4">
           <Link href="/creator" aria-label="Promoet home">
-            <Logo className="h-10 w-auto" variant="icon" />
+            <Logo className="h-8 w-auto" variant="icon" />
           </Link>
         </div>
       </header>

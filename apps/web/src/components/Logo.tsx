@@ -15,8 +15,8 @@ export function Logo({ className = 'h-9 w-auto', variant = 'wordmark' }: LogoPro
       <Image
         src="/logo-icon.png"
         alt="Promoet"
-        width={56}
-        height={32}
+        width={1024}
+        height={209}
         className={className}
         style={{ objectFit: 'contain' }}
         priority
@@ -28,8 +28,8 @@ export function Logo({ className = 'h-9 w-auto', variant = 'wordmark' }: LogoPro
     <Image
       src="/logo-wordmark.png"
       alt="Promoet"
-      width={220}
-      height={56}
+      width={1024}
+      height={209}
       className={className}
       style={{ objectFit: 'contain' }}
       priority
