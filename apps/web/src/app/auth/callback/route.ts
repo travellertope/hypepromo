@@ -10,7 +10,16 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error && data.user) {
-      const role = (data.user.user_metadata?.['role'] as string | undefined) ?? searchParams.get('role') ?? undefined
+      const metaRole = data.user.user_metadata?.['role'] as string | undefined
+      const paramRole = searchParams.get('role') ?? undefined
+      const role = metaRole ?? paramRole
+
+      // For Google OAuth the role arrives via query param, not user metadata.
+      // Write it back into metadata now so the DB trigger can sync it to public.users.
+      if (!metaRole && paramRole) {
+        await supabase.auth.updateUser({ data: { role: paramRole } })
+      }
+
       const dest =
         role === 'creator' ? '/creator' :
         role === 'advertiser' ? '/advertiser' :
