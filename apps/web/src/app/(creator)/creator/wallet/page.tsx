@@ -161,7 +161,7 @@ export default function WalletPage() {
             <>
               <div>
                 <p className="text-xs text-cyber-muted mb-1">Bank: {bank.bankCode} • {bank.bankAccountNumber}</p>
-                {bank.bankAccountName && <p className="text-sm text-white/80">{bank.bankAccountName}</p>}
+                {bank.bankAccountName && <p className="text-sm text-cyber-text">{bank.bankAccountName}</p>}
               </div>
               <div>
                 <label className="block text-xs text-cyber-muted mb-1">Amount (₦)</label>

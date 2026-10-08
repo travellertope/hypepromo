@@ -26,12 +26,14 @@ export default function QuestsPage() {
   const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
-    api.quests.list().then((res) => {
-      setQuests(res.items)
-      setHasMore(!!res.nextCursor)
-      setCursor(res.nextCursor)
-      setLoading(false)
-    })
+    api.quests.list()
+      .then((res) => {
+        setQuests(res.items)
+        setHasMore(!!res.nextCursor)
+        setCursor(res.nextCursor)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   async function handleClaim(questId: string) {

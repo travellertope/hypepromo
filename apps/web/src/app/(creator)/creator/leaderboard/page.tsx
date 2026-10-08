@@ -20,10 +20,10 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.leaderboard.getActive().then((res) => {
-      setData(res)
-      setLoading(false)
-    })
+    api.leaderboard.getActive()
+      .then((res) => { setData(res) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   if (loading) {

@@ -9,18 +9,28 @@ function fmt(kobo: number) {
 export default function StatsPage() {
   const [stats, setStats] = useState<AdvertiserStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.advertiser.getStats().then((s) => {
-      setStats(s)
-      setLoading(false)
-    })
+    api.advertiser.getStats()
+      .then((s) => { setStats(s) })
+      .catch((e) => { setError(e instanceof Error ? e.message : 'Failed to load stats') })
+      .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
+        <p className="text-red-400 text-sm">Couldn&apos;t load stats — {error}</p>
+        <button onClick={() => location.reload()} className="text-xs text-cyber-neon underline">Retry</button>
       </div>
     )
   }
@@ -32,7 +42,7 @@ export default function StatsPage() {
       <h1 className="text-2xl font-black mb-6">Campaign Stats</h1>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
         {[
-          { label: 'Total Clicks', val: stats.totalClicks.toLocaleString(), color: 'text-white' },
+          { label: 'Total Clicks', val: stats.totalClicks.toLocaleString(), color: 'text-cyber-text' },
           { label: 'Valid Clicks', val: stats.validClicks.toLocaleString(), color: 'text-cyber-neon' },
           { label: 'Rejected', val: stats.rejectedClicks.toLocaleString(), color: 'text-red-400' },
           { label: 'Valid Rate', val: `${stats.validPct}%`, color: 'text-green-400' },

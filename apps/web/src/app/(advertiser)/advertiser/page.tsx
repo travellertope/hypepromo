@@ -10,7 +10,7 @@ function fmt(kobo: number) {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  draft: 'bg-white/10 text-white/50',
+  draft: 'bg-cyber-card/40 text-cyber-muted',
   pending_review: 'bg-yellow-500/20 text-yellow-400',
   funded: 'bg-blue-500/20 text-blue-400',
   live: 'bg-green-500/20 text-green-400',
@@ -22,14 +22,15 @@ const STATUS_STYLE: Record<string, string> = {
 export default function AdvertiserCampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [going, setGoing] = useState<string | null>(null)
   const [goLiveError, setGoLiveError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.advertiser.listCampaigns().then((res) => {
-      setCampaigns(res.items)
-      setLoading(false)
-    })
+    api.advertiser.listCampaigns()
+      .then((res) => { setCampaigns(res.items) })
+      .catch((e) => { setLoadError(e instanceof Error ? e.message : 'Failed to load campaigns') })
+      .finally(() => setLoading(false))
   }, [])
 
   async function handleGoLive(id: string) {
@@ -54,6 +55,15 @@ export default function AdvertiserCampaignsPage() {
     )
   }
 
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
+        <p className="text-red-400 text-sm">Couldn&apos;t load campaigns — {loadError}</p>
+        <button onClick={() => location.reload()} className="text-xs text-cyber-neon underline">Retry</button>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -71,7 +81,7 @@ export default function AdvertiserCampaignsPage() {
       {campaigns.length === 0 && (
         <div className="text-center py-20">
           <p className="text-4xl mb-4">📢</p>
-          <p className="text-white/60 mb-4">No campaigns yet</p>
+          <p className="text-cyber-muted mb-4">No campaigns yet</p>
           <Link href="/advertiser/campaigns/new" className="px-6 py-3 rounded-xl bg-cyber-accent text-white font-bold">
             Create Your First Campaign
           </Link>
@@ -84,30 +94,30 @@ export default function AdvertiserCampaignsPage() {
             <div className="flex items-start justify-between gap-2 mb-3">
               <div>
                 <h3 className="font-bold">{c.name}</h3>
-                <p className="text-xs text-white/40 mt-0.5 capitalize">{c.type} · {c.platforms.join(', ')}</p>
+                <p className="text-xs text-cyber-muted mt-0.5 capitalize">{c.type} · {c.platforms.join(', ')}</p>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap ${STATUS_STYLE[c.status] ?? 'bg-white/10 text-white/50'}`}>
+              <span className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap ${STATUS_STYLE[c.status] ?? 'bg-cyber-card/40 text-cyber-muted'}`}>
                 {c.status.replace('_', ' ')}
               </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="bg-white/5 rounded-lg p-2 text-center">
-                <p className="text-xs text-white/40">Budget</p>
+              <div className="bg-cyber-card rounded-lg p-2 text-center">
+                <p className="text-xs text-cyber-muted">Budget</p>
                 <p className="text-sm font-black">{fmt(c.budgetKobo)}</p>
               </div>
-              <div className="bg-white/5 rounded-lg p-2 text-center">
-                <p className="text-xs text-white/40">Spent</p>
+              <div className="bg-cyber-card rounded-lg p-2 text-center">
+                <p className="text-xs text-cyber-muted">Spent</p>
                 <p className="text-sm font-black">{fmt(c.spentKobo)}</p>
               </div>
-              <div className="bg-white/5 rounded-lg p-2 text-center">
-                <p className="text-xs text-white/40">Per Click</p>
+              <div className="bg-cyber-card rounded-lg p-2 text-center">
+                <p className="text-xs text-cyber-muted">Per Click</p>
                 <p className="text-sm font-black">{fmt(c.unitPriceKobo)}</p>
               </div>
             </div>
 
             {/* Budget progress */}
-            <div className="h-1.5 rounded-full bg-white/10 mb-4 overflow-hidden">
+            <div className="h-1.5 rounded-full bg-cyber-card/40 mb-4 overflow-hidden">
               <div
                 className="h-full rounded-full bg-cyber-neon"
                 style={{ width: `${c.budgetKobo > 0 ? Math.min((c.spentKobo / c.budgetKobo) * 100, 100) : 0}%` }}
@@ -125,7 +135,7 @@ export default function AdvertiserCampaignsPage() {
                 </button>
               )}
               {c.status === 'draft' && (
-                <Link href={`/advertiser/campaigns/new?edit=${c.id}`} className="flex-1 py-2 rounded-xl border border-cyber-border text-center text-sm font-semibold text-white/60">
+                <Link href={`/advertiser/campaigns/new?edit=${c.id}`} className="flex-1 py-2 rounded-xl border border-cyber-border text-center text-sm font-semibold text-cyber-muted">
                   Edit
                 </Link>
               )}
