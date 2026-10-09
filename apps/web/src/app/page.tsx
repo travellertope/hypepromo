@@ -120,7 +120,7 @@ export default function Home() {
       <header className="fixed top-0 inset-x-0 z-50 bg-cyber-card border-b border-cyber-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
           <Link href="/" className="text-cyber-text shrink-0" aria-label="Promoet home">
-            <Logo className="h-8 w-auto" variant="icon" />
+            <Logo className="h-8 w-auto" />
           </Link>
 
           <nav className="hidden lg:flex items-center gap-6 xl:gap-8 text-sm font-semibold text-cyber-muted">
@@ -302,7 +302,7 @@ export default function Home() {
       <footer className="bg-cyber-card border-t border-cyber-border py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-cyber-text">
-            <Logo className="h-6 w-auto" variant="icon" />
+            <Logo className="h-6 w-auto" />
           </div>
           <p className="text-xs text-cyber-muted text-center order-last md:order-none">
             © {new Date().getFullYear()} Promoet. All rights reserved.
