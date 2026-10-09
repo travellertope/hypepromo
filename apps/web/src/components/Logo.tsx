@@ -4,8 +4,7 @@ interface LogoProps {
   className?: string
 }
 
-// Renders wordmark in light mode and rings icon in dark mode automatically.
-// The variant prop is kept for API compat but ignored — theme decides.
+// Renders wordmark in light mode and rings icon in dark mode via CSS.
 export function Logo({ className = 'h-9 w-auto' }: LogoProps) {
   return (
     <>

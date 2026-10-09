@@ -22,7 +22,7 @@ export default function CreatorDashboard() {
     ]).then(([p, w, q]) => {
       setProfile(p)
       setWallet(w)
-      setQuests(q?.items.slice(0, 3) ?? [])
+      setQuests((q?.items ?? []).slice(0, 3))
       setLoading(false)
     })
   }, [])
