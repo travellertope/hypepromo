@@ -95,7 +95,6 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
     }
     onVerified?.()
     router.replace(dashboardFor(role))
-    router.refresh()
     return true
   }, [email, otp, role, router, onVerified])
 
