@@ -7,6 +7,8 @@ import {
   upsertAdvertiserProfile,
   getAdvertiserProfile,
 } from './service.ts'
+import { getWallet } from '../wallet/service.ts'
+import { listLiveCampaigns } from '../campaigns/service.ts'
 
 const UpsertCreatorSchema = z.object({
   handle: z.string().regex(/^[a-zA-Z0-9_]{3,20}$/, 'handle must be 3-20 alphanumeric/underscore chars'),
@@ -57,5 +59,16 @@ export default async function identityRoutes(app: FastifyInstance) {
     const profile = await getAdvertiserProfile(req.authUser.id)
     if (!profile) return rep.status(404).send({ error: 'Profile not found' })
     return rep.send(profile)
+  })
+
+  // Single round-trip dashboard aggregate for the creator home screen
+  app.get('/me/dashboard', { preHandler: requireCreator }, async (req, rep) => {
+    const id = req.authUser.id
+    const [profile, wallet, quests] = await Promise.all([
+      getCreatorProfile(id).catch(() => null),
+      getWallet(id).catch(() => null),
+      listLiveCampaigns({ limit: 3 }, id).catch(() => ({ items: [], nextCursor: null })),
+    ])
+    return rep.send({ profile, wallet, quests: quests.items })
   })
 }

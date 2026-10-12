@@ -2,16 +2,23 @@ import { createClient } from './supabase/client'
 
 const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
+// Deduplicate concurrent getSession() calls so parallel apiFetch calls
+// share a single token resolution instead of each making their own.
+let _inflightToken: Promise<string | null> | null = null
+
 async function getToken(): Promise<string | null> {
-  const supabase = createClient()
-  const { data } = await supabase.auth.getSession()
-  return data.session?.access_token ?? null
+  if (_inflightToken) return _inflightToken
+  _inflightToken = createClient()
+    .auth.getSession()
+    .then(({ data }) => data.session?.access_token ?? null)
+    .finally(() => { _inflightToken = null })
+  return _inflightToken
 }
 
 async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
-  timeoutMs = 55000,
+  timeoutMs = 12000,
 ): Promise<T> {
   const token = await getToken()
   const controller = new AbortController()
@@ -47,6 +54,7 @@ export class ApiError extends Error {
 
 export const api = {
   creator: {
+    getDashboard: () => apiFetch<{ profile: CreatorProfile | null; wallet: WalletResponse | null; quests: Quest[] }>('/v1/me/dashboard'),
     getProfile: () => apiFetch<CreatorProfile>('/v1/me/creator-profile'),
     upsertProfile: (body: Partial<CreatorProfile>) =>
       apiFetch<CreatorProfile>('/v1/me/creator-profile', {

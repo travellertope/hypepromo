@@ -94,7 +94,7 @@ export default function AdvertiserCampaignsPage() {
             <div className="flex items-start justify-between gap-2 mb-3">
               <div>
                 <h3 className="font-bold">{c.name}</h3>
-                <p className="text-xs text-cyber-muted mt-0.5 capitalize">{c.type} · {c.platforms.join(', ')}</p>
+                <p className="text-xs text-cyber-muted mt-0.5 capitalize">{c.type} · {(c.platforms ?? []).join(', ')}</p>
               </div>
               <span className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap ${STATUS_STYLE[c.status] ?? 'bg-cyber-card/40 text-cyber-muted'}`}>
                 {c.status.replace('_', ' ')}
