@@ -5,7 +5,19 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { PageSpinner, PageError, SlowHint, ErrorNote } from '@/components/AsyncFeedback'
 import { errorMessage } from '@/lib/errors'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+
+const BUCKET = 'social-screenshots'
+
+async function uploadScreenshot(file: File, userId: string, platform: string): Promise<string> {
+  const supabase = createClient()
+  const ext = file.name.split('.').pop() ?? 'jpg'
+  const path = `${userId}/${platform}_${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true })
+  if (error) throw new Error(error.message)
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
+  return data.publicUrl
+}
 
 const NICHES = ['Fashion', 'Tech', 'Comedy', 'Music', 'Sports', 'Food', 'Travel', 'Finance', 'Health', 'Gaming']
 const STATES = ['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara']
@@ -52,6 +64,9 @@ export default function ProfilePage() {
   const [socialHandle, setSocialHandle] = useState('')
   const [socialFollowers, setSocialFollowers] = useState('')
   const [socialScreenshot, setSocialScreenshot] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadOk, setUploadOk] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [socialSaving, setSocialSaving] = useState(false)
   const [socialError, setSocialError] = useState<string | null>(null)
   const [socialOk, setSocialOk] = useState(false)
@@ -91,10 +106,29 @@ export default function ProfilePage() {
     setNiches((prev) => prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n])
   }
 
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const userId = data?.profile?.id
+    if (!userId) { setSocialError('Save your profile first.'); return }
+    setUploading(true)
+    setUploadOk(false)
+    setSocialError(null)
+    try {
+      const url = await uploadScreenshot(file, userId, socialPlatform)
+      setSocialScreenshot(url)
+      setUploadOk(true)
+    } catch (err) {
+      setSocialError(errorMessage(err, 'Upload failed. Check the storage bucket exists.'))
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function handleLinkSocial() {
     if (!socialHandle.trim()) { setSocialError('Enter your handle.'); return }
     if (!socialFollowers || Number(socialFollowers) < 1) { setSocialError('Enter your follower count.'); return }
-    if (!socialScreenshot.trim()) { setSocialError('Paste a screenshot URL showing your follower count.'); return }
+    if (!socialScreenshot.trim()) { setSocialError('Upload a screenshot first.'); return }
     setSocialSaving(true)
     setSocialError(null)
     setSocialOk(false)
@@ -117,6 +151,8 @@ export default function ProfilePage() {
       setSocialHandle('')
       setSocialFollowers('')
       setSocialScreenshot('')
+      setUploadOk(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
       setTimeout(() => setSocialOk(false), 4000)
     } catch (e) {
       setSocialError(errorMessage(e, 'Failed to link account.'))
@@ -318,15 +354,33 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-xs text-cyber-muted mb-1">Screenshot URL</label>
+              <label className="block text-xs text-cyber-muted mb-1">Screenshot of your follower count</label>
               <input
-                value={socialScreenshot}
-                onChange={(e) => setSocialScreenshot(e.target.value)}
-                placeholder="https://imgur.com/... (screenshot showing your follower count)"
-                className="w-full bg-cyber-card border border-cyber-border rounded-xl px-3 py-2.5 text-sm text-cyber-text placeholder-cyber-muted focus:outline-none focus:border-cyber-neon"
-                style={{ color: 'var(--cyber-text)' }}
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                disabled={uploading}
+                className="hidden"
+                id="screenshot-upload"
               />
-              <p className="text-xs text-cyber-muted mt-1">Upload your screenshot to <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer" className="text-cyber-neon underline">imgur.com</a> and paste the link here.</p>
+              <label
+                htmlFor="screenshot-upload"
+                className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-dashed cursor-pointer transition-all text-sm font-semibold
+                  ${uploadOk
+                    ? 'border-green-500/60 text-green-400 bg-green-500/5'
+                    : 'border-cyber-border text-cyber-muted hover:border-cyber-neon hover:text-cyber-neon'
+                  } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                {uploading ? (
+                  <><span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> Uploading…</>
+                ) : uploadOk ? (
+                  <>✓ Screenshot ready — tap to replace</>
+                ) : (
+                  <>📷 Tap to upload screenshot</>
+                )}
+              </label>
+              <p className="text-xs text-cyber-muted mt-1">Take a screenshot showing your profile and follower count.</p>
             </div>
 
             <button
