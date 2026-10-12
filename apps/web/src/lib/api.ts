@@ -27,7 +27,9 @@ async function apiFetch<T>(
     ...init,
     signal: controller.signal,
     headers: {
-      'Content-Type': 'application/json',
+      // Only set Content-Type when we're actually sending a body — Fastify
+      // rejects "Content-Type: application/json" with an empty body.
+      ...(init.body != null ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init.headers ?? {}),
     },
