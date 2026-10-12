@@ -1,8 +1,9 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { api, type WalletResponse, type BankAccount, type Withdrawal } from '@/lib/api'
-import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import useSWR from 'swr'
+import { api } from '@/lib/api'
+import { PageSpinner, PageError, SlowHint, ErrorNote } from '@/components/AsyncFeedback'
 import { errorMessage } from '@/lib/errors'
+import { useState } from 'react'
 
 function fmt(kobo: number) {
   return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -10,36 +11,27 @@ function fmt(kobo: number) {
 
 type Tab = 'earnings' | 'withdraw' | 'bank'
 
-export default function WalletPage() {
-  const [tab, setTab] = useState<Tab>('earnings')
-  const [wallet, setWallet] = useState<WalletResponse | null>(null)
-  const [bank, setBank] = useState<BankAccount | null>(null)
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([])
-  const [loading, setLoading] = useState(true)
+async function fetchWalletData() {
+  const [wallet, bank, withdrawals] = await Promise.all([
+    api.creator.getWallet(),
+    api.creator.getBankAccount().catch(() => null),
+    api.creator.getWithdrawals().catch(() => ({ items: [] })),
+  ])
+  return { wallet, bank, withdrawals: withdrawals?.items ?? [] }
+}
 
-  // Withdraw form
+export default function WalletPage() {
+  const { data, error, isLoading, mutate } = useSWR('creator/wallet', fetchWalletData)
+  const [tab, setTab] = useState<Tab>('earnings')
+
   const [amount, setAmount] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
 
-  // Bank form
   const [bankCode, setBankCode] = useState('')
   const [acctNum, setAcctNum] = useState('')
   const [savingBank, setSavingBank] = useState(false)
   const [bankError, setBankError] = useState<string | null>(null)
-
-  useEffect(() => {
-    Promise.all([
-      api.creator.getWallet().catch(() => null),
-      api.creator.getBankAccount().catch(() => null),
-      api.creator.getWithdrawals().catch(() => null),
-    ]).then(([w, b, wds]) => {
-      setWallet(w)
-      setBank(b)
-      setWithdrawals(wds?.items ?? [])
-      setLoading(false)
-    })
-  }, [])
 
   async function handleWithdraw() {
     setWithdrawError(null)
@@ -52,13 +44,8 @@ export default function WalletPage() {
     try {
       await api.creator.requestWithdrawal(kobo)
       setAmount('')
-      const [w, wds] = await Promise.all([
-        api.creator.getWallet(),
-        api.creator.getWithdrawals(),
-      ])
-      setWallet(w)
-      setWithdrawals(wds.items)
       setTab('earnings')
+      await mutate()
     } catch (e) {
       setWithdrawError(errorMessage(e, 'Failed to request withdrawal.'))
     } finally {
@@ -74,9 +61,9 @@ export default function WalletPage() {
     setBankError(null)
     setSavingBank(true)
     try {
-      const updated = await api.creator.setBankAccount({ bankCode, bankAccountNumber: acctNum })
-      setBank(updated)
+      await api.creator.setBankAccount({ bankCode, bankAccountNumber: acctNum })
       setTab('earnings')
+      await mutate()
     } catch (e) {
       setBankError(errorMessage(e, 'Failed to save bank account.'))
     } finally {
@@ -84,35 +71,29 @@ export default function WalletPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
-        <SlowHint active />
-      </div>
-    )
-  }
+  if (isLoading) return <PageSpinner />
+  if (error) return <PageError message={errorMessage(error, 'Failed to load wallet')} onRetry={() => mutate()} />
+  if (!data) return null
+
+  const { wallet, bank, withdrawals } = data
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-8">
       <h1 className="text-2xl font-black mb-4">Wallet</h1>
 
-      {wallet && (
-        <div className="grid grid-cols-3 gap-2 mb-6">
-          {[
-            { label: 'Pending', val: wallet.pendingKobo, color: 'text-yellow-400' },
-            { label: 'Available', val: wallet.availableKobo, color: 'text-cyber-neon' },
-            { label: 'Lifetime', val: wallet.lifetimeEarningsKobo, color: 'text-cyber-text' },
-          ].map((item) => (
-            <div key={item.label} className="glass-panel rounded-xl p-3 text-center">
-              <p className="text-xs text-cyber-muted mb-1">{item.label}</p>
-              <p className={`text-sm font-black ${item.color}`}>{fmt(item.val)}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-3 gap-2 mb-6">
+        {[
+          { label: 'Pending', val: wallet.pendingKobo, color: 'text-yellow-400' },
+          { label: 'Available', val: wallet.availableKobo, color: 'text-cyber-neon' },
+          { label: 'Lifetime', val: wallet.lifetimeEarningsKobo, color: 'text-cyber-text' },
+        ].map((item) => (
+          <div key={item.label} className="glass-panel rounded-xl p-3 text-center">
+            <p className="text-xs text-cyber-muted mb-1">{item.label}</p>
+            <p className={`text-sm font-black ${item.color}`}>{fmt(item.val)}</p>
+          </div>
+        ))}
+      </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 mb-4 p-1 glass-panel rounded-xl">
         {(['earnings', 'withdraw', 'bank'] as Tab[]).map((t) => (
           <button
@@ -160,7 +141,7 @@ export default function WalletPage() {
           ) : (
             <>
               <div>
-                <p className="text-xs text-cyber-muted mb-1">Bank: {bank.bankCode} • {bank.bankAccountNumber}</p>
+                <p className="text-xs text-cyber-muted mb-0.5">Bank: {bank.bankCode} • {bank.bankAccountNumber}</p>
                 {bank.bankAccountName && <p className="text-sm text-cyber-text">{bank.bankAccountName}</p>}
               </div>
               <div>

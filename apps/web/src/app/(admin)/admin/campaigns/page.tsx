@@ -1,40 +1,53 @@
 'use client'
-import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { api, type Campaign } from '@/lib/api'
+import { PageSpinner, PageError } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
+import { useState } from 'react'
 
 function fmt(kobo: number) {
   return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
 }
 
 export default function AdminCampaignsPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, error, isLoading, mutate } = useSWR('admin/campaigns', api.admin.getCampaigns)
+  const campaigns: Campaign[] = data?.items ?? []
+
   const [rejecting, setRejecting] = useState<string | null>(null)
   const [reason, setReason] = useState('')
-
-  useEffect(() => {
-    api.admin.getCampaigns().then((res) => {
-      setCampaigns(res.items)
-      setLoading(false)
-    })
-  }, [])
+  const [acting, setActing] = useState<string | null>(null)
 
   async function approve(id: string) {
-    await api.admin.approveCampaign(id)
-    setCampaigns((prev) => prev.filter((c) => c.id !== id))
+    setActing(id)
+    try {
+      await api.admin.approveCampaign(id)
+      mutate(
+        (prev) => prev ? { ...prev, items: prev.items.filter((c) => c.id !== id) } : prev,
+        { revalidate: false },
+      )
+    } finally {
+      setActing(null)
+    }
   }
 
   async function reject(id: string) {
-    if (!reason) return
-    await api.admin.rejectCampaign(id, reason)
-    setCampaigns((prev) => prev.filter((c) => c.id !== id))
-    setRejecting(null)
-    setReason('')
+    if (!reason.trim()) return
+    setActing(id)
+    try {
+      await api.admin.rejectCampaign(id, reason)
+      mutate(
+        (prev) => prev ? { ...prev, items: prev.items.filter((c) => c.id !== id) } : prev,
+        { revalidate: false },
+      )
+      setRejecting(null)
+      setReason('')
+    } finally {
+      setActing(null)
+    }
   }
 
-  if (loading) {
-    return <div className="text-white/40 py-10 text-center">Loading…</div>
-  }
+  if (isLoading) return <PageSpinner />
+  if (error) return <PageError message={errorMessage(error, 'Failed to load campaigns')} onRetry={() => mutate()} />
 
   return (
     <div>
@@ -77,7 +90,7 @@ export default function AdminCampaignsPage() {
             </div>
 
             <div className="mb-4">
-              <p className="text-xs text-white/40 mb-1">Platforms: {c.platforms.join(', ')}</p>
+              <p className="text-xs text-white/40 mb-1">Platforms: {(c.platforms ?? []).join(', ')}</p>
               {c.targetStates && c.targetStates.length > 0 && (
                 <p className="text-xs text-white/40">States: {c.targetStates.join(', ')}</p>
               )}
@@ -91,10 +104,14 @@ export default function AdminCampaignsPage() {
                   placeholder="Rejection reason"
                   className="flex-1 bg-white/5 border border-red-500/40 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none"
                 />
-                <button onClick={() => reject(c.id)} className="px-4 py-2 rounded-xl bg-red-500/80 text-white text-sm font-bold">
+                <button
+                  onClick={() => reject(c.id)}
+                  disabled={acting === c.id}
+                  className="px-4 py-2 rounded-xl bg-red-500/80 text-white text-sm font-bold disabled:opacity-50"
+                >
                   Reject
                 </button>
-                <button onClick={() => setRejecting(null)} className="px-3 py-2 rounded-xl border border-white/10 text-sm text-white/50">
+                <button onClick={() => { setRejecting(null); setReason('') }} className="px-3 py-2 rounded-xl border border-white/10 text-sm text-white/50">
                   Cancel
                 </button>
               </div>
@@ -102,9 +119,10 @@ export default function AdminCampaignsPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => approve(c.id)}
-                  className="px-5 py-2 rounded-xl bg-green-500/80 text-white font-bold text-sm"
+                  disabled={acting === c.id}
+                  className="px-5 py-2 rounded-xl bg-green-500/80 text-white font-bold text-sm disabled:opacity-50"
                 >
-                  Approve
+                  {acting === c.id ? '…' : 'Approve'}
                 </button>
                 <button
                   onClick={() => setRejecting(c.id)}

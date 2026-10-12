@@ -1,70 +1,57 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { api, ApiError, type CreatorProfile, type Social } from '@/lib/api'
+import useSWR from 'swr'
+import { api, ApiError } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { PageSpinner, PageError, SlowHint, ErrorNote } from '@/components/AsyncFeedback'
 import { errorMessage } from '@/lib/errors'
+import { useState, useEffect } from 'react'
 
 const NICHES = ['Fashion', 'Tech', 'Comedy', 'Music', 'Sports', 'Food', 'Travel', 'Finance', 'Health', 'Gaming']
 const STATES = ['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara']
 
+async function fetchProfileData() {
+  const profile = await api.creator.getProfile().catch((e: unknown) => {
+    if (e instanceof ApiError && e.status === 404) return null
+    throw e
+  })
+  const socials = await api.creator.getSocials().catch(() => ({ items: [] }))
+  return { profile, socials: socials?.items ?? [] }
+}
+
 export default function ProfilePage() {
   const router = useRouter()
-  const [profile, setProfile] = useState<CreatorProfile | null>(null)
-  const [socials, setSocials] = useState<Social[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [saveOk, setSaveOk] = useState(false)
+  const { data, error, isLoading, mutate } = useSWR('creator/profile', fetchProfileData)
 
   const [handle, setHandle] = useState('')
   const [bio, setBio] = useState('')
   const [state, setState] = useState('')
   const [niches, setNiches] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
 
   useEffect(() => {
-    if (!loading) return
-    let cancelled = false
-
-    void (async () => {
-      try {
-        const p = await api.creator.getProfile().catch((e: unknown) => {
-          // A new creator has no profile yet — that's an empty form, not a failure.
-          if (e instanceof ApiError && e.status === 404) return null
-          throw e
-        })
-        // Socials are supplementary; their absence shouldn't block the page.
-        const s = await api.creator.getSocials().catch(() => null)
-        if (cancelled) return
-        if (p) {
-          setProfile(p)
-          setHandle(p.handle)
-          setBio(p.bio ?? '')
-          setState(p.state ?? '')
-          setNiches(p.niches ?? [])
-        }
-        setSocials(s?.items ?? [])
-        setLoadError(null)
-      } catch (e) {
-        if (!cancelled) setLoadError(errorMessage(e, 'Something went wrong loading your profile.'))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading])
+    if (!data?.profile) return
+    const p = data.profile
+    setHandle(p.handle)
+    setBio(p.bio ?? '')
+    setState(p.state ?? '')
+    setNiches(p.niches ?? [])
+  }, [data?.profile])
 
   async function handleSave() {
     setSaving(true)
     setSaveError(null)
     setSaveOk(false)
     try {
-      const updated = await api.creator.upsertProfile({ handle, bio: bio || null, state: state || null, niches: niches.length ? niches : null })
-      setProfile(updated)
+      const updated = await api.creator.upsertProfile({
+        handle,
+        bio: bio || null,
+        state: state || null,
+        niches: niches.length ? niches : null,
+      })
+      await mutate((prev) => prev ? { ...prev, profile: updated } : prev, { revalidate: false })
       setSaveOk(true)
       setTimeout(() => setSaveOk(false), 3000)
     } catch (e) {
@@ -84,29 +71,11 @@ export default function ProfilePage() {
     router.push('/')
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
-        <SlowHint active />
-      </div>
-    )
-  }
+  if (isLoading) return <PageSpinner />
+  if (error) return <PageError message={errorMessage(error, 'Failed to load profile')} onRetry={() => mutate()} />
 
-  if (loadError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-6 text-center">
-        <p className="text-cyber-text font-semibold">Couldn't load your profile</p>
-        <p className="text-cyber-muted text-sm">{loadError}</p>
-        <button
-          onClick={() => { setLoadError(null); setLoading(true); }}
-          className="px-6 py-2.5 rounded-xl bg-cyber-accent text-white text-sm font-bold"
-        >
-          Retry
-        </button>
-      </div>
-    )
-  }
+  const profile = data?.profile ?? null
+  const socials = data?.socials ?? []
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-8 pb-6">
@@ -184,7 +153,6 @@ export default function ProfilePage() {
         <SlowHint active={saving} className="-mt-1" />
         <ErrorNote className="-mt-1">{saveError}</ErrorNote>
 
-        {/* Socials */}
         {socials.length > 0 && (
           <div className="mt-2">
             <h3 className="text-sm font-semibold text-cyber-muted mb-2">Connected Platforms</h3>

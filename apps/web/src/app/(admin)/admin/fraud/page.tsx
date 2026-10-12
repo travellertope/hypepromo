@@ -1,19 +1,15 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { api, type FraudClick } from '@/lib/api'
+import useSWR from 'swr'
+import { api } from '@/lib/api'
+import { PageSpinner, PageError } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
 
 export default function AdminFraudPage() {
-  const [items, setItems] = useState<FraudClick[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, error, isLoading, mutate } = useSWR('admin/fraud', api.admin.getFraud)
+  const items = data?.items ?? []
 
-  useEffect(() => {
-    api.admin.getFraud().then((res) => {
-      setItems(res.items)
-      setLoading(false)
-    })
-  }, [])
-
-  if (loading) return <div className="text-white/40 py-10 text-center">Loading…</div>
+  if (isLoading) return <PageSpinner />
+  if (error) return <PageError message={errorMessage(error, 'Failed to load fraud queue')} onRetry={() => mutate()} />
 
   return (
     <div>

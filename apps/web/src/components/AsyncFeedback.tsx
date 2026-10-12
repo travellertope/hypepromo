@@ -44,3 +44,31 @@ export function ErrorNote({ children, className = '' }: { children: React.ReactN
   if (!children) return null
   return <p className={`text-red-500 text-xs text-center ${className}`}>{children}</p>
 }
+
+/** Full-page spinner shown while initial data loads. */
+export function PageSpinner() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+      <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
+      <SlowHint active delayMs={3000} />
+    </div>
+  )
+}
+
+/** Full-page error state with a retry button. */
+export function PageError({ message, onRetry }: { message?: string; onRetry?: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6 text-center">
+      <p className="text-cyber-text font-semibold">Couldn&apos;t load data</p>
+      {message && <p className="text-cyber-muted text-sm max-w-xs">{message}</p>}
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="px-6 py-2.5 rounded-xl bg-cyber-accent text-white text-sm font-bold"
+        >
+          Retry
+        </button>
+      )}
+    </div>
+  )
+}
