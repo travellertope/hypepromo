@@ -35,7 +35,6 @@ export function UserMenu({ links }: { links?: MenuLink[] }) {
   async function handleSignOut() {
     await createClient().auth.signOut()
     router.push('/')
-    router.refresh()
   }
 
   const initials = email ? email.slice(0, 2).toUpperCase() : '?'

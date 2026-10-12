@@ -98,7 +98,6 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
     // This ensures returning users are always sent to their actual dashboard.
     const sessionRole = (data.user?.user_metadata?.['role'] as string | undefined) ?? role
     router.replace(dashboardFor(sessionRole))
-    router.refresh()
     return true
   }, [email, otp, role, router, onVerified])
 
