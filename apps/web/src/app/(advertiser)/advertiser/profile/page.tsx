@@ -61,8 +61,8 @@ export default function AdvertiserProfilePage() {
     try {
       const updated = await api.advertiser.upsertProfile({
         orgName,
-        website: website || undefined,
-        industry: industry || undefined,
+        website: website || null,
+        industry: industry || null,
       })
       setProfile(updated)
       setSaveOk(true)
