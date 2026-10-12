@@ -7,9 +7,31 @@ import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
 import { errorMessage } from '@/lib/errors'
 
 const INDUSTRIES = [
-  'Fashion & Apparel', 'Technology', 'Food & Beverage', 'Health & Wellness',
-  'Entertainment', 'Finance', 'Travel & Hospitality', 'Education',
-  'Beauty & Cosmetics', 'Sports & Fitness', 'Real Estate', 'Automotive',
+  'Agriculture & Farming',
+  'Automotive',
+  'Beauty & Cosmetics',
+  'Books & Literature',
+  'Construction & Architecture',
+  'E-commerce & Retail',
+  'Education',
+  'Entertainment',
+  'Fashion & Apparel',
+  'Finance & Banking',
+  'Food & Beverage',
+  'Gaming',
+  'Government & Public Sector',
+  'Health & Wellness',
+  'Legal Services',
+  'Logistics & Supply Chain',
+  'Media & Publishing',
+  'Music',
+  'Non-profit & NGO',
+  'Real Estate',
+  'Religion & Spirituality',
+  'Sports & Fitness',
+  'Technology',
+  'Telecommunications',
+  'Travel & Hospitality',
 ]
 
 export default function AdvertiserProfilePage() {

@@ -5,8 +5,21 @@ import { useRouter } from 'next/navigation'
 import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
 import { errorMessage } from '@/lib/errors'
 
-const PLATFORMS = ['whatsapp_status', 'x', 'facebook', 'instagram_story', 'instagram_bio', 'telegram']
-const STATES = ['Lagos','Abuja','Rivers','Kano','Oyo','Delta','Anambra','Ogun','Edo','Enugu','Kaduna','Imo','Abia','Osun','Akwa Ibom']
+const PLATFORMS: { id: string; label: string }[] = [
+  { id: 'whatsapp_status', label: 'WhatsApp Status' },
+  { id: 'x', label: 'X (Twitter)' },
+  { id: 'facebook', label: 'Facebook' },
+  { id: 'instagram_story', label: 'Instagram Story' },
+  { id: 'instagram_bio', label: 'Instagram Bio' },
+  { id: 'telegram', label: 'Telegram' },
+]
+const STATES = [
+  'Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno',
+  'Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo',
+  'Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos',
+  'Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers',
+  'Sokoto','Taraba','Yobe','Zamfara',
+]
 
 export default function NewCampaignPage() {
   const router = useRouter()
@@ -24,9 +37,9 @@ export default function NewCampaignPage() {
     setForm((prev) => ({ ...prev, [k]: v }))
   }
 
-  function togglePlatform(p: string) {
+  function togglePlatform(id: string) {
     const curr = form.platforms ?? []
-    set('platforms', curr.includes(p) ? curr.filter((x) => x !== p) : [...curr, p])
+    set('platforms', curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id])
   }
 
   function toggleState(s: string) {
@@ -153,17 +166,17 @@ export default function NewCampaignPage() {
           <div>
             <label className="block text-xs text-cyber-muted mb-2">Platforms</label>
             <div className="flex flex-wrap gap-2">
-              {PLATFORMS.map((p) => (
+              {PLATFORMS.map(({ id, label }) => (
                 <button
-                  key={p}
-                  onClick={() => togglePlatform(p)}
+                  key={id}
+                  onClick={() => togglePlatform(id)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    (form.platforms ?? []).includes(p)
+                    (form.platforms ?? []).includes(id)
                       ? 'bg-cyber-neon/20 border-cyber-neon text-cyber-neon'
                       : 'border-cyber-border text-cyber-muted'
                   }`}
                 >
-                  {p.replace('_', ' ')}
+                  {label}
                 </button>
               ))}
             </div>
@@ -199,7 +212,7 @@ export default function NewCampaignPage() {
             ['Target URL', form.targetUrl],
             ['Price/click', form.unitPriceKobo ? '₦' + (form.unitPriceKobo / 100).toLocaleString() : '-'],
             ['Budget', form.budgetKobo ? '₦' + (form.budgetKobo / 100).toLocaleString() : '-'],
-            ['Platforms', (form.platforms ?? []).join(', ') || 'none'],
+            ['Platforms', (form.platforms ?? []).map((id) => PLATFORMS.find((p) => p.id === id)?.label ?? id).join(', ') || 'none'],
             ['States', (form.targetStates ?? []).join(', ') || 'All'],
           ].map(([label, val]) => (
             <div key={label} className="flex justify-between py-2 border-b border-cyber-border">
