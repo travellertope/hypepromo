@@ -15,16 +15,19 @@ export default function CreatorDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([
-      api.creator.getProfile().catch(() => null),
-      api.creator.getWallet().catch(() => null),
-      api.quests.list().catch(() => null),
-    ]).then(([p, w, q]) => {
-      setProfile(p)
-      setWallet(w)
-      setQuests((q?.items ?? []).slice(0, 3))
-      setLoading(false)
-    })
+    let cancelled = false
+    void (async () => {
+      try {
+        const { profile: p, wallet: w, quests: q } = await api.creator.getDashboard()
+        if (cancelled) return
+        setProfile(p)
+        setWallet(w)
+        setQuests(q.slice(0, 3))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
   }, [])
 
   if (loading) {
@@ -118,7 +121,7 @@ export default function CreatorDashboard() {
             >
               <div>
                 <p className="font-semibold text-sm">{q.campaign.name}</p>
-                <p className="text-xs text-cyber-muted mt-0.5">{q.campaign.platforms.join(', ')}</p>
+                <p className="text-xs text-cyber-muted mt-0.5">{(q.campaign.platforms ?? []).join(', ')}</p>
               </div>
               <div className="text-right">
                 <p className="text-cyber-neon font-black">{fmt(q.campaign.creatorUnitKobo)}</p>

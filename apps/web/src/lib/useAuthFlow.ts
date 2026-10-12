@@ -82,7 +82,7 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
     if (otp.trim().length < 4) return false
     setError(null)
     setLoading(true)
-    const { error: e } = await createClient().auth.verifyOtp({
+    const { data, error: e } = await createClient().auth.verifyOtp({
       email: email.trim(),
       token: otp.trim(),
       type: 'email',
@@ -94,7 +94,10 @@ export function useAuthFlow(role: string, onVerified?: () => void) {
       return false
     }
     onVerified?.()
-    router.replace(dashboardFor(role))
+    // Prefer the role stored in user metadata (set at signup) over the URL param.
+    // This ensures returning users are always sent to their actual dashboard.
+    const sessionRole = (data.user?.user_metadata?.['role'] as string | undefined) ?? role
+    router.replace(dashboardFor(sessionRole))
     return true
   }, [email, otp, role, router, onVerified])
 
