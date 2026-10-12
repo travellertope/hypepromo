@@ -1,40 +1,21 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { api, type AdvertiserStats } from '@/lib/api'
+import useSWR from 'swr'
+import { api } from '@/lib/api'
+import { PageSpinner, PageError } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
 
 function fmt(kobo: number) {
   return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
 }
 
 export default function StatsPage() {
-  const [stats, setStats] = useState<AdvertiserStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data: stats, error, isLoading, mutate } = useSWR(
+    'advertiser/stats',
+    api.advertiser.getStats,
+  )
 
-  useEffect(() => {
-    api.advertiser.getStats()
-      .then((s) => { setStats(s) })
-      .catch((e) => { setError(e instanceof Error ? e.message : 'Failed to load stats') })
-      .finally(() => setLoading(false))
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <p className="text-red-400 text-sm">Couldn&apos;t load stats — {error}</p>
-        <button onClick={() => location.reload()} className="text-xs text-cyber-neon underline">Retry</button>
-      </div>
-    )
-  }
-
+  if (isLoading) return <PageSpinner />
+  if (error) return <PageError message={errorMessage(error, 'Failed to load stats')} onRetry={() => mutate()} />
   if (!stats) return null
 
   return (
@@ -55,7 +36,6 @@ export default function StatsPage() {
         ))}
       </div>
 
-      {/* Click quality gauge */}
       {stats.totalClicks > 0 && (
         <div className="glass-panel rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">

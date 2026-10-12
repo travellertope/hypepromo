@@ -1,6 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { api, type CreatorProfile, type WalletResponse, type Quest } from '@/lib/api'
+import useSWR from 'swr'
+import { api } from '@/lib/api'
+import { PageSpinner } from '@/components/AsyncFeedback'
 import { XpBar } from '@/components/XpBar'
 import Link from 'next/link'
 
@@ -9,34 +10,13 @@ function fmt(kobo: number) {
 }
 
 export default function CreatorDashboard() {
-  const [profile, setProfile] = useState<CreatorProfile | null>(null)
-  const [wallet, setWallet] = useState<WalletResponse | null>(null)
-  const [quests, setQuests] = useState<Quest[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = useSWR('creator/dashboard', api.creator.getDashboard)
 
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const { profile: p, wallet: w, quests: q } = await api.creator.getDashboard()
-        if (cancelled) return
-        setProfile(p)
-        setWallet(w)
-        setQuests(q.slice(0, 3))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [])
+  if (isLoading) return <PageSpinner />
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
-      </div>
-    )
-  }
+  const profile = data?.profile ?? null
+  const wallet = data?.wallet ?? null
+  const quests = (data?.quests ?? []).slice(0, 3)
 
   if (!profile) {
     return (
@@ -52,11 +32,8 @@ export default function CreatorDashboard() {
     )
   }
 
-  const energyPct = ((profile.energyMax - profile.energyUsed) / profile.energyMax) * 100
-
   return (
     <div className="max-w-lg mx-auto">
-      {/* Header */}
       <div className="px-4 pt-8 pb-2">
         <p className="text-cyber-muted text-sm">Welcome back,</p>
         <h1 className="text-2xl font-black text-cyber-text">@{profile.handle}</h1>
@@ -67,7 +44,6 @@ export default function CreatorDashboard() {
 
       <XpBar xp={profile.xp} level={profile.level} streakDays={profile.streakDays} />
 
-      {/* Energy bar */}
       <div className="mx-4 mb-4 glass-panel rounded-2xl p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-cyber-muted">Energy</span>
@@ -83,7 +59,6 @@ export default function CreatorDashboard() {
         </div>
       </div>
 
-      {/* Wallet */}
       {wallet && (
         <div className="mx-4 mb-4 glass-panel rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
@@ -103,7 +78,6 @@ export default function CreatorDashboard() {
         </div>
       )}
 
-      {/* Quest previews */}
       <div className="mx-4 mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-cyber-muted">Active Quests</h2>

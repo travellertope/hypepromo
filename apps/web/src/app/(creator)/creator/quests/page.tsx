@@ -1,8 +1,9 @@
 'use client'
-import { useEffect, useState } from 'react'
+import useSWRInfinite from 'swr/infinite'
 import { api, type Quest } from '@/lib/api'
-import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { PageSpinner, PageError, SlowHint, ErrorNote } from '@/components/AsyncFeedback'
 import { errorMessage } from '@/lib/errors'
+import { useState } from 'react'
 
 function fmt(kobo: number) {
   return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -18,30 +19,33 @@ const PLATFORM_ICONS: Record<string, string> = {
 }
 
 export default function QuestsPage() {
-  const [quests, setQuests] = useState<Quest[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, error, isLoading, mutate, size, setSize } = useSWRInfinite(
+    (pageIndex, prev) => {
+      if (prev && !prev.nextCursor) return null
+      return ['quests', pageIndex === 0 ? null : prev?.nextCursor]
+    },
+    ([, cursor]) => api.quests.list(cursor ?? undefined),
+  )
+
+  const quests: Quest[] = data?.flatMap((p) => p.items) ?? []
+  const hasMore = !!data?.[data.length - 1]?.nextCursor
+
   const [claiming, setClaiming] = useState<string | null>(null)
   const [claimError, setClaimError] = useState<string | null>(null)
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-
-  useEffect(() => {
-    api.quests.list()
-      .then((res) => {
-        setQuests(res.items)
-        setHasMore(!!res.nextCursor)
-        setCursor(res.nextCursor)
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
 
   async function handleClaim(questId: string) {
     setClaimError(null)
     setClaiming(questId)
     try {
       const updated = await api.quests.claim(questId)
-      setQuests((prev) => prev.map((q) => (q.id === questId ? updated : q)))
+      mutate(
+        (pages) =>
+          pages?.map((page) => ({
+            ...page,
+            items: page.items.map((q) => (q.id === questId ? updated : q)),
+          })),
+        { revalidate: false },
+      )
     } catch (e) {
       setClaimError(errorMessage(e, 'Failed to claim quest.'))
     } finally {
@@ -49,22 +53,8 @@ export default function QuestsPage() {
     }
   }
 
-  async function loadMore() {
-    if (!cursor) return
-    const res = await api.quests.list(cursor)
-    setQuests((prev) => [...prev, ...res.items])
-    setHasMore(!!res.nextCursor)
-    setCursor(res.nextCursor)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
-        <SlowHint active />
-      </div>
-    )
-  }
+  if (isLoading) return <PageSpinner />
+  if (error) return <PageError message={errorMessage(error, 'Failed to load quests')} onRetry={() => mutate()} />
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-8">
@@ -107,7 +97,7 @@ export default function QuestsPage() {
               {q.claimedAt ? (
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-cyber-neon inline-block" />
-                  <span className="text-xs text-cyber-neon font-semibold">Active — share & earn!</span>
+                  <span className="text-xs text-cyber-neon font-semibold">Active — share &amp; earn!</span>
                 </div>
               ) : (
                 <button
@@ -126,7 +116,7 @@ export default function QuestsPage() {
 
         {hasMore && (
           <button
-            onClick={loadMore}
+            onClick={() => setSize(size + 1)}
             className="w-full py-3 rounded-xl border border-cyber-border text-sm text-cyber-muted"
           >
             Load more

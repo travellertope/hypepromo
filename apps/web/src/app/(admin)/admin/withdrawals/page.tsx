@@ -1,32 +1,30 @@
 'use client'
-import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { api, type AdminWithdrawal } from '@/lib/api'
-import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { PageSpinner, PageError, SlowHint, ErrorNote } from '@/components/AsyncFeedback'
 import { errorMessage } from '@/lib/errors'
+import { useState } from 'react'
 
 function fmt(kobo: number) {
   return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
 }
 
 export default function AdminWithdrawalsPage() {
-  const [items, setItems] = useState<AdminWithdrawal[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, error, isLoading, mutate } = useSWR('admin/withdrawals', api.admin.getWithdrawals)
+  const items: AdminWithdrawal[] = data?.items ?? []
+
   const [acting, setActing] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-
-  useEffect(() => {
-    api.admin.getWithdrawals().then((res) => {
-      setItems(res.items)
-      setLoading(false)
-    })
-  }, [])
 
   async function approve(id: string) {
     setActionError(null)
     setActing(id)
     try {
       await api.admin.approveWithdrawal(id)
-      setItems((prev) => prev.filter((w) => w.id !== id))
+      mutate(
+        (prev) => prev ? { ...prev, items: prev.items.filter((w) => w.id !== id) } : prev,
+        { revalidate: false },
+      )
     } catch (e) {
       setActionError(errorMessage(e, 'Failed to approve withdrawal.'))
     } finally {
@@ -39,7 +37,10 @@ export default function AdminWithdrawalsPage() {
     setActing(id)
     try {
       await api.admin.rejectWithdrawal(id, 'Manual rejection')
-      setItems((prev) => prev.filter((w) => w.id !== id))
+      mutate(
+        (prev) => prev ? { ...prev, items: prev.items.filter((w) => w.id !== id) } : prev,
+        { revalidate: false },
+      )
     } catch (e) {
       setActionError(errorMessage(e, 'Failed to reject withdrawal.'))
     } finally {
@@ -47,12 +48,8 @@ export default function AdminWithdrawalsPage() {
     }
   }
 
-  if (loading) return (
-    <div className="py-10 text-center flex flex-col items-center gap-2">
-      <p className="text-white/40">Loading…</p>
-      <SlowHint active />
-    </div>
-  )
+  if (isLoading) return <PageSpinner />
+  if (error) return <PageError message={errorMessage(error, 'Failed to load withdrawals')} onRetry={() => mutate()} />
 
   return (
     <div>
@@ -90,7 +87,7 @@ export default function AdminWithdrawalsPage() {
                 disabled={acting === w.id}
                 className="flex-1 py-2 rounded-xl bg-green-500/80 text-white font-bold text-sm disabled:opacity-50"
               >
-                Approve & Pay
+                {acting === w.id ? '…' : 'Approve & Pay'}
               </button>
               <button
                 onClick={() => reject(w.id)}
@@ -100,7 +97,6 @@ export default function AdminWithdrawalsPage() {
                 Reject
               </button>
             </div>
-
             <SlowHint active={acting === w.id} className="mt-2" />
           </div>
         ))}

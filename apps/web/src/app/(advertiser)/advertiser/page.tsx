@@ -1,9 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { api, type Campaign } from '@/lib/api'
-import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
+import { PageSpinner, PageError, SlowHint, ErrorNote } from '@/components/AsyncFeedback'
 import { errorMessage } from '@/lib/errors'
 import Link from 'next/link'
+import { useState } from 'react'
 
 function fmt(kobo: number) {
   return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -20,30 +21,24 @@ const STATUS_STYLE: Record<string, string> = {
 }
 
 export default function AdvertiserCampaignsPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [retryKey, setRetryKey] = useState(0)
+  const { data, error, isLoading, mutate } = useSWR(
+    'advertiser/campaigns',
+    () => api.advertiser.listCampaigns(),
+  )
+  const campaigns: Campaign[] = data?.items ?? []
+
   const [going, setGoing] = useState<string | null>(null)
   const [goLiveError, setGoLiveError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setLoadError(null)
-    api.advertiser.listCampaigns()
-      .then((res) => { if (!cancelled) setCampaigns(res?.items ?? []) })
-      .catch((e) => { if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Failed to load campaigns') })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [retryKey])
 
   async function handleGoLive(id: string) {
     setGoLiveError(null)
     setGoing(id)
     try {
       const updated = await api.advertiser.goLive(id)
-      setCampaigns((prev) => prev.map((c) => (c.id === id ? updated : c)))
+      mutate(
+        (prev) => prev ? { ...prev, items: prev.items.map((c) => (c.id === id ? updated : c)) } : prev,
+        { revalidate: false },
+      )
     } catch (e) {
       setGoLiveError(errorMessage(e, 'Failed to take the campaign live.'))
     } finally {
@@ -51,23 +46,8 @@ export default function AdvertiserCampaignsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
-        <SlowHint active />
-      </div>
-    )
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <p className="text-red-400 text-sm">Couldn&apos;t load campaigns — {loadError}</p>
-        <button onClick={() => setRetryKey((k) => k + 1)} className="text-xs text-cyber-neon underline">Retry</button>
-      </div>
-    )
-  }
+  if (isLoading) return <PageSpinner />
+  if (error) return <PageError message={errorMessage(error, 'Failed to load campaigns')} onRetry={() => mutate()} />
 
   return (
     <div>
@@ -121,7 +101,6 @@ export default function AdvertiserCampaignsPage() {
               </div>
             </div>
 
-            {/* Budget progress */}
             <div className="h-1.5 rounded-full bg-cyber-card/40 mb-4 overflow-hidden">
               <div
                 className="h-full rounded-full bg-cyber-neon"

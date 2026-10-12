@@ -1,6 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { api, type LeaderboardResponse } from '@/lib/api'
+import useSWR from 'swr'
+import { api } from '@/lib/api'
+import { PageSpinner, PageError } from '@/components/AsyncFeedback'
+import { errorMessage } from '@/lib/errors'
 
 function fmt(kobo: number) {
   return '₦' + (kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -16,23 +18,10 @@ const TIER_COLORS: Record<string, string> = {
 const RANK_MEDALS = ['🥇', '🥈', '🥉']
 
 export default function LeaderboardPage() {
-  const [data, setData] = useState<LeaderboardResponse | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data, error, isLoading, mutate } = useSWR('leaderboard/active', api.leaderboard.getActive)
 
-  useEffect(() => {
-    api.leaderboard.getActive()
-      .then((res) => { setData(res) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
-      </div>
-    )
-  }
+  if (isLoading) return <PageSpinner />
+  if (error) return <PageError message={errorMessage(error, 'Failed to load leaderboard')} onRetry={() => mutate()} />
 
   if (!data?.season) {
     return (
