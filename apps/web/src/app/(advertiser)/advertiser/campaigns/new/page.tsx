@@ -13,13 +13,6 @@ const PLATFORMS: { id: string; label: string }[] = [
   { id: 'instagram_bio', label: 'Instagram Bio' },
   { id: 'telegram', label: 'Telegram' },
 ]
-const STATES = [
-  'Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno',
-  'Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo',
-  'Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos',
-  'Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers',
-  'Sokoto','Taraba','Yobe','Zamfara',
-]
 
 export default function NewCampaignPage() {
   const router = useRouter()
@@ -30,7 +23,6 @@ export default function NewCampaignPage() {
   const [form, setForm] = useState<Partial<CreateCampaignInput>>({
     type: 'cpc',
     platforms: [],
-    targetStates: [],
   })
 
   function set<K extends keyof CreateCampaignInput>(k: K, v: CreateCampaignInput[K]) {
@@ -40,11 +32,6 @@ export default function NewCampaignPage() {
   function togglePlatform(id: string) {
     const curr = form.platforms ?? []
     set('platforms', curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id])
-  }
-
-  function toggleState(s: string) {
-    const curr = form.targetStates ?? []
-    set('targetStates', curr.includes(s) ? curr.filter((x) => x !== s) : [...curr, s])
   }
 
   async function handleSubmit() {
@@ -181,24 +168,6 @@ export default function NewCampaignPage() {
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-xs text-cyber-muted mb-2">Target States (leave empty for all)</label>
-            <div className="flex flex-wrap gap-2">
-              {STATES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => toggleState(s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    (form.targetStates ?? []).includes(s)
-                      ? 'bg-cyber-accent/20 border-cyber-accent text-cyber-accent'
-                      : 'border-cyber-border text-cyber-muted'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       ),
     },
@@ -213,7 +182,6 @@ export default function NewCampaignPage() {
             ['Price/click', form.unitPriceKobo ? '₦' + (form.unitPriceKobo / 100).toLocaleString() : '-'],
             ['Budget', form.budgetKobo ? '₦' + (form.budgetKobo / 100).toLocaleString() : '-'],
             ['Platforms', (form.platforms ?? []).map((id) => PLATFORMS.find((p) => p.id === id)?.label ?? id).join(', ') || 'none'],
-            ['States', (form.targetStates ?? []).join(', ') || 'All'],
           ].map(([label, val]) => (
             <div key={label} className="flex justify-between py-2 border-b border-cyber-border">
               <span className="text-sm text-cyber-muted">{label}</span>

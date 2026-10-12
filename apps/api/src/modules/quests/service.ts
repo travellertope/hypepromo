@@ -1,6 +1,6 @@
 import { eq, and, desc } from 'drizzle-orm'
 import { db } from '@promoet/db/client'
-import { campaigns, creators, quests, referralLinks } from '@promoet/db/schema'
+import { campaigns, creators, quests, referralLinks, creatorSocials } from '@promoet/db/schema'
 import type { Platform, ClaimResponse, QuestWithLinks } from '@promoet/schemas'
 import { generateCode } from './code.ts'
 import { kvPut } from '../../lib/cloudflare.ts'
@@ -47,6 +47,21 @@ export async function claimQuest(
     .limit(1)
 
   if (!creator) throw new Error('CREATOR_NOT_FOUND')
+
+  // Require at least one verified social with 500+ followers
+  const MIN_FOLLOWERS = 500
+  const [verifiedSocial] = await db
+    .select({ id: creatorSocials.id })
+    .from(creatorSocials)
+    .where(
+      and(
+        eq(creatorSocials.creatorId, creatorId),
+        eq(creatorSocials.verificationStatus, 'verified'),
+      ),
+    )
+    .limit(1)
+
+  if (!verifiedSocial) throw new Error('NO_VERIFIED_SOCIAL')
 
   // Reset energy if 24h has passed
   const now = new Date()

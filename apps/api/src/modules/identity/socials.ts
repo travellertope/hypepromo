@@ -11,6 +11,7 @@ const UpsertSocialSchema = z.object({
   platform: z.enum(PLATFORMS),
   handle: z.string().min(1).max(100),
   followerCount: z.number().int().nonnegative().optional(),
+  screenshotUrl: z.string().url().optional(),
 })
 
 export default async function socialsRoutes(app: FastifyInstance) {
@@ -35,12 +36,21 @@ export default async function socialsRoutes(app: FastifyInstance) {
         platform: body.data.platform,
         handle: body.data.handle,
         followerCount: body.data.followerCount,
+        screenshotUrl: body.data.screenshotUrl,
+        verificationStatus: 'pending',
+        rejectionReason: null,
+        verifiedAt: null,
       })
       .onConflictDoUpdate({
         target: [creatorSocials.creatorId, creatorSocials.platform],
         set: {
           handle: body.data.handle,
           followerCount: body.data.followerCount,
+          screenshotUrl: body.data.screenshotUrl,
+          // Reset to pending on every edit so admin re-reviews
+          verificationStatus: 'pending',
+          rejectionReason: null,
+          verifiedAt: null,
           updatedAt: new Date(),
         },
       })
