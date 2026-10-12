@@ -14,7 +14,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
   app.get('/quests', async (request, reply) => {
     const params = QuestFeedParamsSchema.parse(request.query)
     const { items, nextCursor } = await svc.listLiveCampaigns(params)
-    return reply.send({ data: items, nextCursor })
+    return reply.send({ items, nextCursor })
   })
 
   app.get<{ Params: { campaignId: string } }>(
@@ -28,7 +28,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
       )
       const item = rows.items.find((c) => c.id === campaignId)
       if (!item) return reply.status(404).send({ error: 'Campaign not found' })
-      return reply.send({ data: item })
+      return reply.send(item)
     },
   )
 
@@ -39,7 +39,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const input = CreateCampaignSchema.parse(request.body)
       const campaign = await svc.createCampaign(request.authUser.id, input)
-      return reply.status(201).send({ data: campaign })
+      return reply.status(201).send(campaign)
     },
   )
 
@@ -55,7 +55,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
         q.cursor,
         q.limit,
       )
-      return reply.send({ data: items, nextCursor })
+      return reply.send({ items, nextCursor })
     },
   )
 
@@ -68,7 +68,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
         request.authUser.id,
       )
       if (!campaign) return reply.status(404).send({ error: 'Not found' })
-      return reply.send({ data: campaign })
+      return reply.send(campaign)
     },
   )
 
@@ -83,7 +83,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
           request.authUser.id,
           input,
         )
-        return reply.send({ data: campaign })
+        return reply.send(campaign)
       } catch (err) {
         const msg = err instanceof Error ? err.message : ''
         if (msg === 'NOT_FOUND') return reply.status(404).send({ error: 'Not found' })
@@ -102,7 +102,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
           request.params.id,
           request.authUser.id,
         )
-        return reply.send({ data: campaign })
+        return reply.send(campaign)
       } catch (err) {
         const msg = err instanceof Error ? err.message : ''
         if (msg === 'NOT_FOUND') return reply.status(404).send({ error: 'Not found' })
@@ -121,7 +121,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
           request.params.id,
           request.authUser.id,
         )
-        return reply.send({ data: campaign })
+        return reply.send(campaign)
       } catch (err) {
         const msg = err instanceof Error ? err.message : ''
         if (msg === 'NOT_FOUND') return reply.status(404).send({ error: 'Not found' })
@@ -140,7 +140,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
           request.params.id,
           request.authUser.id,
         )
-        return reply.send({ data: campaign })
+        return reply.send(campaign)
       } catch (err) {
         const msg = err instanceof Error ? err.message : ''
         if (msg === 'NOT_FOUND') return reply.status(404).send({ error: 'Not found' })
@@ -160,7 +160,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
           request.params.id,
           request.authUser.id,
         )
-        return reply.send({ data: campaign })
+        return reply.send(campaign)
       } catch (err) {
         const msg = err instanceof Error ? err.message : ''
         if (msg === 'NOT_FOUND')         return reply.status(404).send({ error: 'Not found' })
@@ -196,7 +196,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       try {
         const campaign = await svc.approveCampaign(request.params.id, request.authUser.id)
-        return reply.send({ data: campaign })
+        return reply.send(campaign)
       } catch (err) {
         const msg = err instanceof Error ? err.message : ''
         if (msg === 'NOT_FOUND') return reply.status(404).send({ error: 'Not found' })
@@ -213,7 +213,7 @@ const campaignRoutes: FastifyPluginAsync = async (app) => {
       const { reason } = RejectCampaignSchema.parse(request.body)
       try {
         const campaign = await svc.rejectCampaign(request.params.id, request.authUser.id, reason)
-        return reply.send({ data: campaign })
+        return reply.send(campaign)
       } catch (err) {
         const msg = err instanceof Error ? err.message : ''
         if (msg === 'NOT_FOUND') return reply.status(404).send({ error: 'Not found' })
