@@ -23,15 +23,20 @@ export default function AdvertiserCampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
   const [going, setGoing] = useState<string | null>(null)
   const [goLiveError, setGoLiveError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setLoadError(null)
     api.advertiser.listCampaigns()
-      .then((res) => { setCampaigns(res.items) })
-      .catch((e) => { setLoadError(e instanceof Error ? e.message : 'Failed to load campaigns') })
-      .finally(() => setLoading(false))
-  }, [])
+      .then((res) => { if (!cancelled) setCampaigns(res?.items ?? []) })
+      .catch((e) => { if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Failed to load campaigns') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [retryKey])
 
   async function handleGoLive(id: string) {
     setGoLiveError(null)
@@ -59,7 +64,7 @@ export default function AdvertiserCampaignsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3">
         <p className="text-red-400 text-sm">Couldn&apos;t load campaigns — {loadError}</p>
-        <button onClick={() => location.reload()} className="text-xs text-cyber-neon underline">Retry</button>
+        <button onClick={() => setRetryKey((k) => k + 1)} className="text-xs text-cyber-neon underline">Retry</button>
       </div>
     )
   }

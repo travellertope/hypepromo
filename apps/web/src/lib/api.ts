@@ -54,7 +54,7 @@ export class ApiError extends Error {
 
 export const api = {
   creator: {
-    getDashboard: () => apiFetch<{ profile: CreatorProfile | null; wallet: WalletResponse | null; quests: Quest[] }>('/v1/me/dashboard'),
+    getDashboard: () => apiFetch<{ profile: CreatorProfile | null; wallet: WalletResponse | null; quests: Quest[] }>('/v1/me/dashboard', {}, 45000),
     getProfile: () => apiFetch<CreatorProfile>('/v1/me/creator-profile'),
     upsertProfile: (body: Partial<CreatorProfile>) =>
       apiFetch<CreatorProfile>('/v1/me/creator-profile', {
@@ -102,7 +102,7 @@ export const api = {
       }),
     getStats: () => apiFetch<AdvertiserStats>('/v1/me/stats'),
     listCampaigns: (cursor?: string) =>
-      apiFetch<PagedResponse<Campaign>>(`/v1/me/campaigns${cursor ? `?cursor=${cursor}` : ''}`),
+      apiFetch<PagedResponse<Campaign>>(`/v1/me/campaigns${cursor ? `?cursor=${cursor}` : ''}`, {}, 45000),
     getCampaign: (id: string) => apiFetch<Campaign>(`/v1/me/campaigns/${id}`),
     createCampaign: (body: CreateCampaignInput) =>
       apiFetch<Campaign>('/v1/me/campaigns', { method: 'POST', body: JSON.stringify(body) }),
