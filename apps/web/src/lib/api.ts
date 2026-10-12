@@ -64,7 +64,7 @@ export const api = {
         body: JSON.stringify(body),
       }, 30000),
     getSocials: () => apiFetch<{ items: Social[] }>('/v1/me/socials'),
-    upsertSocial: (platform: string, body: { handle: string; followerCount?: number }) =>
+    upsertSocial: (platform: string, body: { handle: string; followerCount?: number; screenshotUrl?: string }) =>
       apiFetch<Social>(`/v1/me/socials/${platform}`, {
         method: 'PUT',
         body: JSON.stringify(body),
@@ -142,6 +142,14 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ reason }),
       }),
+    getSocials: () => apiFetch<{ items: AdminSocial[] }>('/v1/admin/socials'),
+    verifySocial: (id: string) =>
+      apiFetch(`/v1/admin/socials/${id}/verify`, { method: 'POST' }),
+    rejectSocial: (id: string, reason: string) =>
+      apiFetch(`/v1/admin/socials/${id}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }),
     getFraud: () => apiFetch<{ items: FraudClick[] }>('/v1/admin/clicks/fraud'),
     getProofs: () => apiFetch<{ items: AdminProof[] }>('/v1/admin/proofs'),
     approveProof: (id: string) =>
@@ -187,7 +195,17 @@ export interface Social {
   platform: string
   handle: string
   followerCount: number | null
+  screenshotUrl: string | null
+  verificationStatus: 'pending' | 'verified' | 'rejected'
+  rejectionReason: string | null
   verifiedAt: string | null
+}
+
+export interface AdminSocial extends Social {
+  creatorId: string
+  socialHandle: string
+  updatedAt: string
+  createdAt: string
 }
 
 export interface WalletResponse {

@@ -20,6 +20,7 @@ const questRoutes: FastifyPluginAsync = async (app) => {
       } catch (err) {
         const msg = err instanceof Error ? err.message : ''
         if (msg === 'CREATOR_NOT_FOUND') return reply.status(403).send({ error: 'Creator profile not found' })
+        if (msg === 'NO_VERIFIED_SOCIAL') return reply.status(403).send({ error: 'You need at least one verified social account to claim quests. Go to your profile to link and verify an account.' })
         if (msg === 'OUT_OF_ENERGY') return reply.status(429).send({ error: 'Out of energy. Come back tomorrow.' })
         if (msg === 'CAMPAIGN_NOT_FOUND') return reply.status(404).send({ error: 'Campaign not found' })
         if (msg === 'CAMPAIGN_NOT_LIVE') return reply.status(409).send({ error: 'Campaign is not live' })

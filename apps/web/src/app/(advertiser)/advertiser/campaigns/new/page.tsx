@@ -1,7 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { api, type CreateCampaignInput } from '@/lib/api'
-import { useRouter } from 'next/navigation'
 import { SlowHint, ErrorNote } from '@/components/AsyncFeedback'
 import { errorMessage } from '@/lib/errors'
 
@@ -13,25 +13,41 @@ const PLATFORMS: { id: string; label: string }[] = [
   { id: 'instagram_bio', label: 'Instagram Bio' },
   { id: 'telegram', label: 'Telegram' },
 ]
-const STATES = [
-  'Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno',
-  'Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo',
-  'Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos',
-  'Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers',
-  'Sokoto','Taraba','Yobe','Zamfara',
-]
 
-export default function NewCampaignPage() {
+function CampaignForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editId = searchParams.get('edit') ?? null
+
   const [step, setStep] = useState(0)
+  const [loading, setLoading] = useState(!!editId)
   const [saving, setSaving] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const [form, setForm] = useState<Partial<CreateCampaignInput>>({
     type: 'cpc',
     platforms: [],
-    targetStates: [],
   })
+
+  // Load existing campaign when editing
+  useEffect(() => {
+    if (!editId) return
+    let cancelled = false
+    void api.advertiser.getCampaign(editId).then((c) => {
+      if (cancelled) return
+      setForm({
+        name: c.name,
+        description: c.description ?? '',
+        targetUrl: c.targetUrl,
+        type: c.type as 'cpc' | 'cpa',
+        unitPriceKobo: c.unitPriceKobo,
+        budgetKobo: c.budgetKobo,
+        platforms: c.platforms,
+      })
+      setLoading(false)
+    }).catch(() => setLoading(false))
+    return () => { cancelled = true }
+  }, [editId])
 
   function set<K extends keyof CreateCampaignInput>(k: K, v: CreateCampaignInput[K]) {
     setForm((prev) => ({ ...prev, [k]: v }))
@@ -42,11 +58,6 @@ export default function NewCampaignPage() {
     set('platforms', curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id])
   }
 
-  function toggleState(s: string) {
-    const curr = form.targetStates ?? []
-    set('targetStates', curr.includes(s) ? curr.filter((x) => x !== s) : [...curr, s])
-  }
-
   async function handleSubmit() {
     if (!form.name || !form.targetUrl || !form.unitPriceKobo || !form.budgetKobo) {
       setSubmitError('Fill in the name, target URL, price per click and budget first.')
@@ -55,13 +66,26 @@ export default function NewCampaignPage() {
     setSubmitError(null)
     setSaving(true)
     try {
-      const campaign = await api.advertiser.createCampaign(form as CreateCampaignInput)
-      await api.advertiser.submitCampaign(campaign.id)
+      if (editId) {
+        await api.advertiser.updateCampaign(editId, form as CreateCampaignInput)
+        await api.advertiser.submitCampaign(editId)
+      } else {
+        const campaign = await api.advertiser.createCampaign(form as CreateCampaignInput)
+        await api.advertiser.submitCampaign(campaign.id)
+      }
       router.push('/advertiser')
     } catch (e) {
       setSubmitError(errorMessage(e, 'Failed to submit campaign.'))
       setSaving(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[40vh]">
+        <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
+      </div>
+    )
   }
 
   const steps = [
@@ -181,24 +205,6 @@ export default function NewCampaignPage() {
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-xs text-cyber-muted mb-2">Target States (leave empty for all)</label>
-            <div className="flex flex-wrap gap-2">
-              {STATES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => toggleState(s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    (form.targetStates ?? []).includes(s)
-                      ? 'bg-cyber-accent/20 border-cyber-accent text-cyber-accent'
-                      : 'border-cyber-border text-cyber-muted'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       ),
     },
@@ -213,7 +219,6 @@ export default function NewCampaignPage() {
             ['Price/click', form.unitPriceKobo ? '₦' + (form.unitPriceKobo / 100).toLocaleString() : '-'],
             ['Budget', form.budgetKobo ? '₦' + (form.budgetKobo / 100).toLocaleString() : '-'],
             ['Platforms', (form.platforms ?? []).map((id) => PLATFORMS.find((p) => p.id === id)?.label ?? id).join(', ') || 'none'],
-            ['States', (form.targetStates ?? []).join(', ') || 'All'],
           ].map(([label, val]) => (
             <div key={label} className="flex justify-between py-2 border-b border-cyber-border">
               <span className="text-sm text-cyber-muted">{label}</span>
@@ -221,7 +226,9 @@ export default function NewCampaignPage() {
             </div>
           ))}
           <p className="text-xs text-cyber-muted mt-2">
-            Your campaign will go to admin review. Fund it after approval to go live.
+            {editId
+              ? 'Your changes will be saved and the campaign resubmitted for admin review.'
+              : 'Your campaign will go to admin review. Fund it after approval to go live.'}
           </p>
         </div>
       ),
@@ -236,12 +243,12 @@ export default function NewCampaignPage() {
         {step > 0 && (
           <button onClick={() => setStep(step - 1)} className="text-cyber-muted text-sm">← Back</button>
         )}
-        <h1 className="text-2xl font-black">New Campaign</h1>
+        <h1 className="text-2xl font-black">{editId ? 'Edit Campaign' : 'New Campaign'}</h1>
       </div>
 
       {/* Step dots */}
       <div className="flex gap-1.5 mb-6">
-        {steps.map((s, i) => (
+        {steps.map((_, i) => (
           <div key={i} className={`flex-1 h-1 rounded-full transition-all ${i <= step ? 'bg-cyber-neon' : 'bg-cyber-card/40'}`} />
         ))}
       </div>
@@ -265,12 +272,24 @@ export default function NewCampaignPage() {
             disabled={saving}
             className="w-full py-3 rounded-xl bg-cyber-accent text-white font-bold disabled:opacity-50"
           >
-            {saving ? 'Submitting…' : 'Submit for Review'}
+            {saving ? 'Submitting…' : editId ? 'Save & Resubmit' : 'Submit for Review'}
           </button>
           <SlowHint active={saving} className="mt-2" />
           <ErrorNote className="mt-2">{submitError}</ErrorNote>
         </>
       )}
     </div>
+  )
+}
+
+export default function NewCampaignPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-[40vh]">
+        <div className="w-8 h-8 rounded-full border-2 border-cyber-neon border-t-transparent animate-spin" />
+      </div>
+    }>
+      <CampaignForm />
+    </Suspense>
   )
 }

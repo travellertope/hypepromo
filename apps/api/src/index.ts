@@ -16,6 +16,7 @@ import paymentsRoutes from './modules/payments/router.ts'
 import internalRoutes from './modules/internal/router.ts'
 import adminWithdrawalRoutes from './modules/admin/withdrawals.ts'
 import adminFraudRoutes from './modules/admin/fraud.ts'
+import adminSocialsRoutes from './modules/admin/socials.ts'
 import leaderboardRoutes from './modules/leaderboards/router.ts'
 import proofsRoutes from './modules/proofs/router.ts'
 
@@ -67,6 +68,7 @@ try {
   await app.register(internalRoutes, { prefix: '/v1' })
   await app.register(adminWithdrawalRoutes, { prefix: '/v1' })
   await app.register(adminFraudRoutes, { prefix: '/v1' })
+  await app.register(adminSocialsRoutes, { prefix: '/v1' })
   await app.register(leaderboardRoutes, { prefix: '/v1' })
   await app.register(proofsRoutes, { prefix: '/v1' })
 
