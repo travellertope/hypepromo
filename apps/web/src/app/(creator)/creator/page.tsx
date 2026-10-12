@@ -15,16 +15,23 @@ export default function CreatorDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([
-      api.creator.getProfile().catch(() => null),
-      api.creator.getWallet().catch(() => null),
-      api.quests.list().catch(() => null),
-    ]).then(([p, w, q]) => {
-      setProfile(p)
-      setWallet(w)
-      setQuests((q?.items ?? []).slice(0, 3))
-      setLoading(false)
-    })
+    let cancelled = false
+    void (async () => {
+      try {
+        const [p, w, q] = await Promise.all([
+          api.creator.getProfile().catch(() => null),
+          api.creator.getWallet().catch(() => null),
+          api.quests.list().catch(() => null),
+        ])
+        if (cancelled) return
+        setProfile(p)
+        setWallet(w)
+        setQuests((q?.items ?? []).slice(0, 3))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
   }, [])
 
   if (loading) {

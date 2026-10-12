@@ -58,6 +58,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
+  // Role-based area protection: redirect users who visit the wrong section.
+  // The role is read from user_metadata (set at signup and preserved in the JWT).
+  if (isProtected && user) {
+    const userRole = user.user_metadata?.['role'] as string | undefined
+    if (userRole === 'advertiser' && pathname.startsWith('/creator')) {
+      return NextResponse.redirect(new URL('/advertiser', request.url))
+    }
+    if (userRole === 'creator' && pathname.startsWith('/advertiser')) {
+      return NextResponse.redirect(new URL('/creator', request.url))
+    }
+  }
+
   // Already authed users visiting auth pages → send them home
   if (isAuthPage && user) {
     return NextResponse.redirect(new URL('/', request.url))

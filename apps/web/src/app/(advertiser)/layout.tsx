@@ -31,7 +31,7 @@ export default function AdvertiserLayout({ children }: { children: ReactNode }) 
               ))}
               <ThemeToggle className="ml-2" />
             </nav>
-            <UserMenu />
+            <UserMenu links={[{ href: '/advertiser/profile', label: 'Profile' }]} />
           </div>
         </div>
       </header>
